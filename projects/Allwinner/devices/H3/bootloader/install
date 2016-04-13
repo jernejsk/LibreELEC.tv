@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2016-present Team LibreELEC (https://libreelec.tv)
+
+cp -av u-boot.img $INSTALL/usr/share/bootloader
+cp -av spl/sunxi-spl.bin $INSTALL/usr/share/bootloader
