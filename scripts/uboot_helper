@@ -9,6 +9,20 @@ devices = {
     },
   },
 
+  'Allwinner' : {
+    'H3' : {
+      'beelink_x2' : { 'dtb' : 'sun8i-h3-beelink-x2.dtb', 'config' : 'beelink_x2_defconfig' },
+      'libretech_h3' : { 'dtb' : 'sun8i-h3-libretech-all-h3-cc.dtb', 'config' : 'libretech_all_h3_cc_h3_defconfig' },
+      'orangepi_2' : { 'dtb' : 'sun8i-h3-orangepi-2.dtb', 'config' : 'orangepi_2_defconfig' },
+      'orangepi_lite': { 'dtb': 'sun8i-h3-orangepi-lite.dtb', 'config': 'orangepi_lite_defconfig' },
+      'orangepi_one': { 'dtb': 'sun8i-h3-orangepi-one.dtb', 'config': 'orangepi_one_defconfig' },
+      'orangepi_pc': { 'dtb': 'sun8i-h3-orangepi-pc.dtb', 'config': 'orangepi_pc_defconfig' },
+      'orangepi_pc_plus': { 'dtb': 'sun8i-h3-orangepi-pc-plus.dtb', 'config': 'orangepi_pc_plus_defconfig' },
+      'orangepi_plus2e': { 'dtb': 'sun8i-h3-orangepi-plus2e.dtb', 'config': 'orangepi_plus2e_defconfig' },
+      'orangepi_plus': { 'dtb': 'sun8i-h3-orangepi-plus.dtb', 'config': 'orangepi_plus_defconfig' },
+    },
+  },
+
   'Rockchip' : {
     'MiQi' : { 'rk3288' : { 'dtb' : 'rk3288-miqi.dtb', 'config' : 'miqi-rk3288_config' }, },
     'RK3328' : {
