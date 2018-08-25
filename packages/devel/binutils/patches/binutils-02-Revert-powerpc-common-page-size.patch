@@ -1,0 +1,255 @@
+From 61d2a4dce250ccf361f6cb9fe70afeae55c9026b Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@siol.net>
+Date: Sat, 25 Aug 2018 13:24:21 +0200
+Subject: [PATCH] Revert "powerpc common-page-size"
+
+This reverts commit 702d167134149f420ea3bcbc194d63a2653a0c27.
+---
+ bfd/ChangeLog                            | 15 ---------------
+ bfd/bfd-in2.h                            |  2 +-
+ bfd/bfd.c                                | 13 +++----------
+ bfd/elf-bfd.h                            |  3 ---
+ bfd/elf32-ppc.c                          |  4 ++--
+ bfd/elf64-ppc.c                          |  3 +--
+ bfd/elfxx-target.h                       | 11 -----------
+ ld/ChangeLog                             |  8 --------
+ ld/ldemul.c                              |  5 -----
+ ld/ldmain.c                              |  2 ++
+ ld/testsuite/ld-powerpc/ppc476-shared.d  |  2 +-
+ ld/testsuite/ld-powerpc/ppc476-shared2.d |  2 +-
+ 12 files changed, 11 insertions(+), 59 deletions(-)
+
+diff --git a/bfd/ChangeLog b/bfd/ChangeLog
+index 1cadfc4b7f..7ae2ee5184 100644
+--- a/bfd/ChangeLog
++++ b/bfd/ChangeLog
+@@ -1958,21 +1958,6 @@
+ 	* bfd-in2.h: Regenerate.
+ 	* configure: Regenerate.
+ 
+-2018-04-14  Alan Modra  <amodra@gmail.com>
+-
+-	* elf-bfd.h (struct elf_backend_data): Add relropagesize.
+-	* elfxx-target.h (ELF_RELROPAGESIZE): Provide default and
+-	sanity test.
+-	(elfNN_bed): Init relropagesize.
+-	* bfd.c (bfd_emul_get_commonpagesize): Add boolean param to
+-	select relropagesize.
+-	* elf32-ppc.c (ELF_COMMONPAGESIZE): Define as 0x1000.
+-	(ELF_RELROPAGESIZE): Define as ELF_MAXPAGESIZE.
+-	(ELF_MINPAGESIZE): Don't define.
+-	* elf64-ppc.c (ELF_COMMONPAGESIZE): Define as 0x1000.
+-	(ELF_RELROPAGESIZE): Define as ELF_MAXPAGESIZE.
+-	* bfd-in2.h: Regenerate.
+-
+ 2018-04-14  Alan Modra  <amodra@gmail.com>
+ 
+ 	* elf32-ppc.c (ELF_MAXPAGESIZE, ELF_COMMONPAGESIZE): Don't depend
+diff --git a/bfd/bfd-in2.h b/bfd/bfd-in2.h
+index 46a085f29b..a951858b84 100644
+--- a/bfd/bfd-in2.h
++++ b/bfd/bfd-in2.h
+@@ -7363,7 +7363,7 @@ bfd_vma bfd_emul_get_maxpagesize (const char *);
+ 
+ void bfd_emul_set_maxpagesize (const char *, bfd_vma);
+ 
+-bfd_vma bfd_emul_get_commonpagesize (const char *, bfd_boolean);
++bfd_vma bfd_emul_get_commonpagesize (const char *);
+ 
+ void bfd_emul_set_commonpagesize (const char *, bfd_vma);
+ 
+diff --git a/bfd/bfd.c b/bfd/bfd.c
+index 15becd7ae8..d758194abd 100644
+--- a/bfd/bfd.c
++++ b/bfd/bfd.c
+@@ -2145,7 +2145,7 @@ FUNCTION
+ 	bfd_emul_get_commonpagesize
+ 
+ SYNOPSIS
+-	bfd_vma bfd_emul_get_commonpagesize (const char *, bfd_boolean);
++	bfd_vma bfd_emul_get_commonpagesize (const char *);
+ 
+ DESCRIPTION
+ 	Returns the common page size, in bytes, as determined by
+@@ -2156,22 +2156,15 @@ RETURNS
+ */
+ 
+ bfd_vma
+-bfd_emul_get_commonpagesize (const char *emul, bfd_boolean relro)
++bfd_emul_get_commonpagesize (const char *emul)
+ {
+   const bfd_target *target;
+ 
+   target = bfd_find_target (emul, NULL);
+   if (target != NULL
+       && target->flavour == bfd_target_elf_flavour)
+-    {
+-      const struct elf_backend_data *bed;
++    return xvec_get_elf_backend_data (target)->commonpagesize;
+ 
+-      bed = xvec_get_elf_backend_data (target);
+-      if (relro)
+-	return bed->relropagesize;
+-      else
+-	return bed->commonpagesize;
+-    }
+   return 0;
+ }
+ 
+diff --git a/bfd/elf-bfd.h b/bfd/elf-bfd.h
+index cf256f70e0..121809cc2d 100644
+--- a/bfd/elf-bfd.h
++++ b/bfd/elf-bfd.h
+@@ -867,9 +867,6 @@ struct elf_backend_data
+   /* The common page size for this backend.  */
+   bfd_vma commonpagesize;
+ 
+-  /* The value of commonpagesize to use when -z relro for this backend.  */
+-  bfd_vma relropagesize;
+-
+   /* The BFD flags applied to sections created for dynamic linking.  */
+   flagword dynamic_sec_flags;
+ 
+diff --git a/bfd/elf32-ppc.c b/bfd/elf32-ppc.c
+index 61f70de12e..7047760408 100644
+--- a/bfd/elf32-ppc.c
++++ b/bfd/elf32-ppc.c
+@@ -10318,8 +10318,8 @@ ppc_elf_finish_dynamic_sections (bfd *output_bfd,
+ #define ELF_TARGET_ID		PPC32_ELF_DATA
+ #define ELF_MACHINE_CODE	EM_PPC
+ #define ELF_MAXPAGESIZE		0x10000
+-#define ELF_COMMONPAGESIZE	0x1000
+-#define ELF_RELROPAGESIZE	ELF_MAXPAGESIZE
++#define ELF_COMMONPAGESIZE	0x10000
++#define ELF_MINPAGESIZE		0x1000
+ #define elf_info_to_howto	ppc_elf_info_to_howto
+ 
+ #ifdef  EM_CYGNUS_POWERPC
+diff --git a/bfd/elf64-ppc.c b/bfd/elf64-ppc.c
+index 24855ed514..7d35820381 100644
+--- a/bfd/elf64-ppc.c
++++ b/bfd/elf64-ppc.c
+@@ -64,8 +64,7 @@ static bfd_vma opd_entry_value
+ #define ELF_TARGET_ID		PPC64_ELF_DATA
+ #define ELF_MACHINE_CODE	EM_PPC64
+ #define ELF_MAXPAGESIZE		0x10000
+-#define ELF_COMMONPAGESIZE	0x1000
+-#define ELF_RELROPAGESIZE	ELF_MAXPAGESIZE
++#define ELF_COMMONPAGESIZE	0x10000
+ #define elf_info_to_howto	ppc64_elf_info_to_howto
+ 
+ #define elf_backend_want_got_sym 0
+diff --git a/bfd/elfxx-target.h b/bfd/elfxx-target.h
+index 0c4de8cc66..c33a91198a 100644
+--- a/bfd/elfxx-target.h
++++ b/bfd/elfxx-target.h
+@@ -371,10 +371,6 @@
+ #define ELF_COMMONPAGESIZE ELF_MAXPAGESIZE
+ #endif
+ 
+-#ifndef ELF_RELROPAGESIZE
+-#define ELF_RELROPAGESIZE ELF_COMMONPAGESIZE
+-#endif
+-
+ #ifndef ELF_MINPAGESIZE
+ #define ELF_MINPAGESIZE ELF_COMMONPAGESIZE
+ #endif
+@@ -382,15 +378,9 @@
+ #if ELF_COMMONPAGESIZE > ELF_MAXPAGESIZE
+ # error ELF_COMMONPAGESIZE > ELF_MAXPAGESIZE
+ #endif
+-#if ELF_RELROPAGESIZE > ELF_MAXPAGESIZE
+-# error ELF_RELROPAGESIZE > ELF_MAXPAGESIZE
+-#endif
+ #if ELF_MINPAGESIZE > ELF_COMMONPAGESIZE
+ # error ELF_MINPAGESIZE > ELF_COMMONPAGESIZE
+ #endif
+-#if ELF_MINPAGESIZE > ELF_RELROPAGESIZE
+-# error ELF_MINPAGESIZE > ELF_RELROPAGESIZE
+-#endif
+ 
+ #ifndef ELF_DYNAMIC_SEC_FLAGS
+ /* Note that we set the SEC_IN_MEMORY flag for these sections.  */
+@@ -774,7 +764,6 @@ static struct elf_backend_data elfNN_bed =
+   ELF_MAXPAGESIZE,		/* maxpagesize */
+   ELF_MINPAGESIZE,		/* minpagesize */
+   ELF_COMMONPAGESIZE,		/* commonpagesize */
+-  ELF_RELROPAGESIZE,		/* commonpagesize to use with -z relro */
+   ELF_DYNAMIC_SEC_FLAGS,	/* dynamic_sec_flags */
+   elf_backend_arch_data,
+   elf_info_to_howto,
+diff --git a/ld/ChangeLog b/ld/ChangeLog
+index 4b33f72eff..d21ef23374 100644
+--- a/ld/ChangeLog
++++ b/ld/ChangeLog
+@@ -2288,14 +2288,6 @@
+ 	* Makefile.in: Regenerate.
+ 	* po/BLD-POTFILES.in: Regenerate.
+ 
+-2018-04-14  Alan Modra  <amodra@gmail.com>
+-
+-	* ldmain.c (main): Move config.maxpagesize and
+-	config.commonpagesize initialization to..
+-	* ldemul.c (after_parse_default): ..here.
+-	* testsuite/ld-powerpc/ppc476-shared.d: Pass -z common-page-size.
+-	* testsuite/ld-powerpc/ppc476-shared2.d: Likewise.
+-
+ 2018-04-14  Alan Modra  <amodra@gmail.com>
+ 
+ 	* emulparams/elf32ppcwindiss.sh: Rewrite to use elf32ppc.sh.
+diff --git a/ld/ldemul.c b/ld/ldemul.c
+index cd6743dad4..6e5b0dee5d 100644
+--- a/ld/ldemul.c
++++ b/ld/ldemul.c
+@@ -225,11 +225,6 @@ after_parse_default (void)
+       if (!is_vma)
+ 	ldlang_add_undef (entry_symbol.name, entry_from_cmdline);
+     }
+-  if (config.maxpagesize == 0)
+-    config.maxpagesize = bfd_emul_get_maxpagesize (default_target);
+-  if (config.commonpagesize == 0)
+-    config.commonpagesize = bfd_emul_get_commonpagesize (default_target,
+-							 link_info.relro);
+ }
+ 
+ void
+diff --git a/ld/ldmain.c b/ld/ldmain.c
+index f31eeb29c3..de9e8b86e3 100644
+--- a/ld/ldmain.c
++++ b/ld/ldmain.c
+@@ -306,6 +306,8 @@ main (int argc, char **argv)
+   emulation = get_emulation (argc, argv);
+   ldemul_choose_mode (emulation);
+   default_target = ldemul_choose_target (argc, argv);
++  config.maxpagesize = bfd_emul_get_maxpagesize (default_target);
++  config.commonpagesize = bfd_emul_get_commonpagesize (default_target);
+   lang_init ();
+   ldexp_init ();
+   ldemul_before_parse ();
+diff --git a/ld/testsuite/ld-powerpc/ppc476-shared.d b/ld/testsuite/ld-powerpc/ppc476-shared.d
+index 7953cb44e2..72f8a3d3be 100644
+--- a/ld/testsuite/ld-powerpc/ppc476-shared.d
++++ b/ld/testsuite/ld-powerpc/ppc476-shared.d
+@@ -1,6 +1,6 @@
+ #source: ppc476-shared.s
+ #as: -a32
+-#ld: -melf32ppc -q -shared -z common-page-size=0x10000 --ppc476-workaround -T ppc476-shared.lnk
++#ld: -melf32ppc -q -shared --ppc476-workaround -T ppc476-shared.lnk
+ #objdump: -dr
+ #target: powerpc*-*-*
+ 
+diff --git a/ld/testsuite/ld-powerpc/ppc476-shared2.d b/ld/testsuite/ld-powerpc/ppc476-shared2.d
+index 26a5c41f98..5bf0a035cf 100644
+--- a/ld/testsuite/ld-powerpc/ppc476-shared2.d
++++ b/ld/testsuite/ld-powerpc/ppc476-shared2.d
+@@ -1,6 +1,6 @@
+ #source: ppc476-shared.s
+ #as: -a32
+-#ld: -melf32ppc -shared -z common-page-size=0x10000 --ppc476-workaround -T ppc476-shared.lnk
++#ld: -melf32ppc -shared --ppc476-workaround -T ppc476-shared.lnk
+ #objdump: -R
+ #target: powerpc*-*-*
+ 
+-- 
+2.18.0
+
