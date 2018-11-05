@@ -1,0 +1,118 @@
+From aadb402209c261168ad0f5f27407594d3a91bd66 Mon Sep 17 00:00:00 2001
+From: MilhouseVH <milhouseVH.github@nmacleod.com>
+Date: Fri, 9 Nov 2018 17:17:46 +0000
+Subject: [PATCH 1/2] Naiively fix build issues with 4.20-rc1
+
+---
+ kernel/nvidia-drm/nvidia-drm-gem-nvkms-memory.c | 2 +-
+ kernel/nvidia/linux_nvswitch.c                  | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/kernel/nvidia-drm/nvidia-drm-gem-nvkms-memory.c b/kernel/nvidia-drm/nvidia-drm-gem-nvkms-memory.c
+index 1db7777..dae2295 100644
+--- a/kernel/nvidia-drm/nvidia-drm-gem-nvkms-memory.c
++++ b/kernel/nvidia-drm/nvidia-drm-gem-nvkms-memory.c
+@@ -345,7 +345,7 @@ static int __nv_drm_vma_fault(struct vm_area_struct *vma,
+ 
+     page_offset = vmf->pgoff - drm_vma_node_start(&gem->vma_node);
+ 
+-    ret = vm_insert_pfn(vma, address, pfn + page_offset);
++    ret = vmf_insert_pfn(vma, address, pfn + page_offset);
+ 
+     switch (ret) {
+         case 0:
+diff --git a/kernel/nvidia/linux_nvswitch.c b/kernel/nvidia/linux_nvswitch.c
+index 1c50ee0..91e912a 100644
+--- a/kernel/nvidia/linux_nvswitch.c
++++ b/kernel/nvidia/linux_nvswitch.c
+@@ -1579,7 +1579,7 @@ nvswitch_os_snprintf_time
+     struct tm t;
+     NvS32 date_end;
+ 
+-    time_to_tm(time_nsec / NVSWITCH_NSEC_PER_SEC, 0, &t);
++    time64_to_tm(time_nsec / NVSWITCH_NSEC_PER_SEC, 0, &t);
+ 
+     date_end = snprintf(date,
+                         date_len,
+-- 
+2.14.1
+
+
+From bff4a53573d1cf9ee9fdaca8996410e1cb79c737 Mon Sep 17 00:00:00 2001
+From: MilhouseVH <milhouseVH.github@nmacleod.com>
+Date: Fri, 9 Nov 2018 17:22:45 +0000
+Subject: [PATCH 2/2] Power management hack
+
+Ref: http://rglinuxtech.com/?p=2421
+---
+ kernel/common/inc/nv-proto.h |  2 +-
+ kernel/nvidia/nv.c           | 40 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 41 insertions(+), 1 deletion(-)
+
+diff --git a/kernel/common/inc/nv-proto.h b/kernel/common/inc/nv-proto.h
+index dfad843..23f96c4 100644
+--- a/kernel/common/inc/nv-proto.h
++++ b/kernel/common/inc/nv-proto.h
+@@ -96,7 +96,7 @@ void          nvidia_remove         (struct pci_dev *);
+ int           nvidia_suspend        (struct pci_dev *, pm_message_t);
+ int           nvidia_resume         (struct pci_dev *);
+ 
+-#if defined(NV_DEV_PM_OPS_PRESENT)
++#if defined(NV_DEV_PM_OPS_PRESENT) || 1
+ int           nv_pmops_suspend      (struct device *dev);
+ int           nv_pmops_resume       (struct device *dev);
+ int           nv_pmops_freeze       (struct device *dev);
+diff --git a/kernel/nvidia/nv.c b/kernel/nvidia/nv.c
+index a3b531d..4d3bea0 100644
+--- a/kernel/nvidia/nv.c
++++ b/kernel/nvidia/nv.c
+@@ -4603,6 +4603,46 @@ struct device *dev
+     return 0;
+ }
+ #endif /*defined(NV_DEV_PM_OPS_PRESENT) */
++#else /* defined(NV_PM_SUPPORT_DEVICE_DRIVER_MODEL) */
++int nvidia_suspend(struct pci_dev* dev, pm_message_t state)
++{
++	return 0;
++}
++
++int nvidia_resume(struct pci_dev* dev)
++{
++	return 0;
++}
++
++int nv_pmops_suspend(struct device* dev)
++{
++	return 0;
++}
++
++int nv_pmops_resume(struct device* dev)
++{
++	return 0;
++}
++
++int nv_pmops_freeze(struct device* dev)
++{
++	return 0;
++}
++
++int nv_pmops_thaw(struct device* dev)
++{
++	return 0;
++}
++
++int nv_pmops_restore(struct device* dev)
++{
++	return 0;
++}
++
++int nv_pmops_poweroff(struct device* dev)
++{
++	return 0;
++}
+ #endif /* defined(NV_PM_SUPPORT_DEVICE_DRIVER_MODEL) */
+ 
+ #if defined(NV_PCI_ERROR_RECOVERY)
+-- 
+2.14.1
+
