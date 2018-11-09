@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2018-present Team LibreELEC (https://libreelec.tv)
+
+if [ -f "$RELEASE_DIR/3rdparty/bootloader/u-boot.itb" ]; then
+  echo "Writing u-boot.itb to $(basename $DISK)"
+  dd if="$RELEASE_DIR/3rdparty/bootloader/u-boot.itb" of="$DISK" bs=1K seek=40 conv=fsync,notrunc >"$SAVE_ERROR" 2>&1 || show_error
+fi
+
+if [ -f "$RELEASE_DIR/3rdparty/bootloader/sunxi-spl.bin" ]; then
+  echo "Writing SPL to $(basename $DISK)"
+  dd if="$RELEASE_DIR/3rdparty/bootloader/sunxi-spl.bin" of="$DISK" bs=1K seek=8 conv=fsync,notrunc >"$SAVE_ERROR" 2>&1 || show_error
+fi
