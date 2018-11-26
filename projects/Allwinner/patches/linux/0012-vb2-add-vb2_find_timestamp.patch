@@ -1,0 +1,108 @@
+From ec4a2c0e685b63469a7637a751f35fc6b2b33e89 Mon Sep 17 00:00:00 2001
+From: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Date: Wed, 12 Dec 2018 13:38:59 +0100
+Subject: [PATCH 12/20] vb2: add vb2_find_timestamp()
+
+Use v4l2_timeval_to_ns instead of timeval_to_ns to ensure that
+both kernelspace and userspace will use the same conversion
+function.
+
+Next add a new vb2_find_timestamp() function to find buffers
+with a specific timestamp.
+
+This function will only look at DEQUEUED and DONE buffers, i.e.
+buffers that are already processed.
+
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+---
+ .../media/common/videobuf2/videobuf2-v4l2.c   | 22 +++++++++++++++++--
+ include/media/videobuf2-v4l2.h                | 19 +++++++++++++++-
+ 2 files changed, 38 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/media/common/videobuf2/videobuf2-v4l2.c b/drivers/media/common/videobuf2/videobuf2-v4l2.c
+index a17033ab2c22..8667d25969cf 100644
+--- a/drivers/media/common/videobuf2/videobuf2-v4l2.c
++++ b/drivers/media/common/videobuf2/videobuf2-v4l2.c
+@@ -143,7 +143,7 @@ static void __copy_timestamp(struct vb2_buffer *vb, const void *pb)
+ 		 * and the timecode field and flag if needed.
+ 		 */
+ 		if (q->copy_timestamp)
+-			vb->timestamp = timeval_to_ns(&b->timestamp);
++			vb->timestamp = v4l2_timeval_to_ns(&b->timestamp);
+ 		vbuf->flags |= b->flags & V4L2_BUF_FLAG_TIMECODE;
+ 		if (b->flags & V4L2_BUF_FLAG_TIMECODE)
+ 			vbuf->timecode = b->timecode;
+@@ -461,7 +461,8 @@ static void __fill_v4l2_buffer(struct vb2_buffer *vb, void *pb)
+ 	b->flags = vbuf->flags;
+ 	b->field = vbuf->field;
+ 	b->timestamp = ns_to_timeval(vb->timestamp);
+-	b->timecode = vbuf->timecode;
++	if (b->flags & V4L2_BUF_FLAG_TIMECODE)
++		b->timecode = vbuf->timecode;
+ 	b->sequence = vbuf->sequence;
+ 	b->reserved2 = 0;
+ 	b->request_fd = 0;
+@@ -587,6 +588,23 @@ static const struct vb2_buf_ops v4l2_buf_ops = {
+ 	.copy_timestamp		= __copy_timestamp,
+ };
+ 
++int vb2_find_timestamp(const struct vb2_queue *q, u64 timestamp,
++		       unsigned int start_idx)
++{
++	unsigned int i;
++
++	for (i = start_idx; i < q->num_buffers; i++) {
++		struct vb2_buffer *vb = q->bufs[i];
++
++		if ((vb->state == VB2_BUF_STATE_DEQUEUED ||
++		     vb->state == VB2_BUF_STATE_DONE) &&
++		    vb->timestamp == timestamp)
++			return i;
++	}
++	return -1;
++}
++EXPORT_SYMBOL_GPL(vb2_find_timestamp);
++
+ /*
+  * vb2_querybuf() - query video buffer information
+  * @q:		videobuf queue
+diff --git a/include/media/videobuf2-v4l2.h b/include/media/videobuf2-v4l2.h
+index 727855463838..80f1afa0edad 100644
+--- a/include/media/videobuf2-v4l2.h
++++ b/include/media/videobuf2-v4l2.h
+@@ -32,7 +32,7 @@
+  *		&enum v4l2_field.
+  * @timecode:	frame timecode.
+  * @sequence:	sequence count of this frame.
+- * @request_fd:	the request_fd associated with this buffer
++ * @request_fd:	the request_fd associated with this buffer.
+  * @planes:	plane information (userptr/fd, length, bytesused, data_offset).
+  *
+  * Should contain enough information to be able to cover all the fields
+@@ -55,6 +55,23 @@ struct vb2_v4l2_buffer {
+ #define to_vb2_v4l2_buffer(vb) \
+ 	container_of(vb, struct vb2_v4l2_buffer, vb2_buf)
+ 
++/**
++ * vb2_find_timestamp() - Find buffer with given timestamp in the queue
++ *
++ * @q:		pointer to &struct vb2_queue with videobuf2 queue.
++ * @timestamp:	the timestamp to find. Only buffers in state DEQUEUED or DONE
++ *		are considered.
++ * @start_idx:	the start index (usually 0) in the buffer array to start
++ *		searching from. Note that there may be multiple buffers
++ *		with the same timestamp value, so you can restart the search
++ *		by setting @start_idx to the previously found index + 1.
++ *
++ * Returns the buffer index of the buffer with the given @timestamp, or
++ * -1 if no buffer with @timestamp was found.
++ */
++int vb2_find_timestamp(const struct vb2_queue *q, u64 timestamp,
++		       unsigned int start_idx);
++
+ int vb2_querybuf(struct vb2_queue *q, struct v4l2_buffer *b);
+ 
+ /**
+-- 
+2.20.0
+

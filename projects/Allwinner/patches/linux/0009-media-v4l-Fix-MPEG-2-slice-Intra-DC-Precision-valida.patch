@@ -1,0 +1,34 @@
+From ead7270c1ac2c25ee3f6439f3e5e23b963f7a261 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 25 Nov 2018 15:21:42 +0000
+Subject: [PATCH 09/20] media: v4l: Fix MPEG-2 slice Intra DC Precision
+ validation
+
+intra_dc_precision is a 2-bit integer [1]
+allow use of all valid options, 8 - 11 bits precision
+
+[1] ISO/IEC 13818-2 Table 6-13
+
+Fixes: c27bb30e7b6d ("media: v4l: Add definitions for MPEG-2 slice format and metadata")
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+---
+ drivers/media/v4l2-core/v4l2-ctrls.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/media/v4l2-core/v4l2-ctrls.c b/drivers/media/v4l2-core/v4l2-ctrls.c
+index 5f2b033a7a42..129a986fa7e1 100644
+--- a/drivers/media/v4l2-core/v4l2-ctrls.c
++++ b/drivers/media/v4l2-core/v4l2-ctrls.c
+@@ -1636,7 +1636,8 @@ static int std_validate(const struct v4l2_ctrl *ctrl, u32 idx,
+ 		switch (p_mpeg2_slice_params->picture.intra_dc_precision) {
+ 		case 0: /* 8 bits */
+ 		case 1: /* 9 bits */
+-		case 11: /* 11 bits */
++		case 2: /* 10 bits */
++		case 3: /* 11 bits */
+ 			break;
+ 		default:
+ 			return -EINVAL;
+-- 
+2.20.0
+

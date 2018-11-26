@@ -1,0 +1,35 @@
+From 076af0f2c9c1eb13f380934f8c71f6a5adb10720 Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Mon, 26 Nov 2018 11:10:44 +0300
+Subject: [PATCH 08/20] media: cedrus: Fix a NULL vs IS_ERR() check
+
+The devm_ioremap_resource() function doesn't return NULL pointers, it
+returns error pointers.
+
+Fixes: 50e761516f2b ("media: platform: Add Cedrus VPU decoder driver")
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Acked-by: Paul Kocialkowski <paul.kocialkowski@bootlin.com>
+---
+ drivers/staging/media/sunxi/cedrus/cedrus_hw.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_hw.c b/drivers/staging/media/sunxi/cedrus/cedrus_hw.c
+index 0662906aab57..82570fa37c49 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_hw.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_hw.c
+@@ -244,10 +244,10 @@ int cedrus_hw_probe(struct cedrus_dev *dev)
+ 
+ 	res = platform_get_resource(dev->pdev, IORESOURCE_MEM, 0);
+ 	dev->base = devm_ioremap_resource(dev->dev, res);
+-	if (!dev->base) {
++	if (IS_ERR(dev->base)) {
+ 		v4l2_err(&dev->v4l2_dev, "Failed to map registers\n");
+ 
+-		ret = -ENOMEM;
++		ret = PTR_ERR(dev->base);
+ 		goto err_sram;
+ 	}
+ 
+-- 
+2.20.0
+
