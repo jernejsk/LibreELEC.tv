@@ -1,0 +1,34 @@
+From 16e30be293f0584af025b71f851091795c4dcc17 Mon Sep 17 00:00:00 2001
+From: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+Date: Fri, 2 Nov 2018 06:36:32 -0400
+Subject: [PATCH 02/20] v4l2-controls: add a missing include
+
+As warned by "make headers_check", the definition for the linux-specific
+integer types is missing:
+
+	./usr/include/linux/v4l2-controls.h:1105: found __[us]{8,16,32,64} type without #include <linux/types.h>
+
+Fixes: c27bb30e7b6d ("media: v4l: Add definitions for MPEG-2 slice format and metadata")
+Reported-by: Linus Torvalds <torvalds@linux-foundation.org>
+Reported-by: Stephen Rothwell <sfr@canb.auug.org.au>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+---
+ include/uapi/linux/v4l2-controls.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/uapi/linux/v4l2-controls.h b/include/uapi/linux/v4l2-controls.h
+index 998983a6e6b7..9fc69d1d9fa8 100644
+--- a/include/uapi/linux/v4l2-controls.h
++++ b/include/uapi/linux/v4l2-controls.h
+@@ -47,6 +47,8 @@
+  *  videodev2.h.
+  */
+ 
++#include <linux/types.h>
++
+ #ifndef __LINUX_V4L2_CONTROLS_H
+ #define __LINUX_V4L2_CONTROLS_H
+ 
+-- 
+2.20.0
+
