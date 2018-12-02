@@ -28,6 +28,9 @@ devices = {
       'orangepi_plus2e': { 'dtb': 'sun8i-h3-orangepi-plus2e.dtb', 'config': 'orangepi_plus2e_defconfig' },
       'orangepi_plus': { 'dtb': 'sun8i-h3-orangepi-plus.dtb', 'config': 'orangepi_plus_defconfig' },
     },
+    'H6' : {
+      'pine_h64' : { 'dtb' : 'sun50i-h6-pine-h64.dtb', 'config' : 'pine_h64_defconfig' },
+    },
   },
 
   'Rockchip' : {
