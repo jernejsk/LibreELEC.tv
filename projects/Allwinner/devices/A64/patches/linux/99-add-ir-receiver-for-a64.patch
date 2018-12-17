@@ -1,0 +1,35 @@
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+index e2b5ee5..316d7ed 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+@@ -978,6 +978,18 @@
+ 			#reset-cells = <1>;
+ 		};
+ 
++		r_ir: ir@1f02000 {
++			compatible = "allwinner,sun5i-a13-ir";
++			clocks = <&r_ccu CLK_APB0_IR>, <&r_ccu CLK_IR>;
++			clock-names = "apb", "ir";
++			resets = <&r_ccu RST_APB0_IR>;
++			interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
++			reg = <0x01f02000 0x400>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&r_ir_pins>;
++			status = "disabled";
++		};
++
+ 		r_i2c: i2c@1f02400 {
+ 			compatible = "allwinner,sun50i-a64-i2c",
+ 				     "allwinner,sun6i-a31-i2c";
+@@ -1022,6 +1034,11 @@
+ 				function = "s_pwm";
+ 			};
+ 
++			r_ir_pins: ir-pins {
++				pins = "PL11";
++				function = "s_cir_rx";
++			};
++
+ 			r_rsb_pins: rsb {
+ 				pins = "PL0", "PL1";
+ 				function = "s_rsb";
