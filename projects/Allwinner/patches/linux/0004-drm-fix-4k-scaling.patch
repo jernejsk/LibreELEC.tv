@@ -31,19 +31,6 @@ index 932836d26e2b..be0deee70182 100644
  
  static const char * const tcon0_parents[] = { "pll-mipi", "pll-video0-2x" };
  static const u8 tcon0_table[] = { 0, 2, };
-diff --git a/drivers/clk/sunxi-ng/ccu-sun50i-h6.c b/drivers/clk/sunxi-ng/ccu-sun50i-h6.c
-index 139e8389615c..daf78966555e 100644
---- a/drivers/clk/sunxi-ng/ccu-sun50i-h6.c
-+++ b/drivers/clk/sunxi-ng/ccu-sun50i-h6.c
-@@ -266,7 +266,7 @@ static SUNXI_CCU_M_WITH_MUX_GATE(de_clk, "de", de_parents, 0x600,
- 				       0, 4,	/* M */
- 				       24, 1,	/* mux */
- 				       BIT(31),	/* gate */
--				       0);
-+				       CLK_SET_RATE_PARENT);
- 
- static SUNXI_CCU_GATE(bus_de_clk, "bus-de", "psi-ahb1-ahb2",
- 		      0x60c, BIT(0), 0);
 diff --git a/drivers/clk/sunxi-ng/ccu-sun8i-v3s.c b/drivers/clk/sunxi-ng/ccu-sun8i-v3s.c
 index 621b1cd996db..ee170bf21cdf 100644
 --- a/drivers/clk/sunxi-ng/ccu-sun8i-v3s.c
