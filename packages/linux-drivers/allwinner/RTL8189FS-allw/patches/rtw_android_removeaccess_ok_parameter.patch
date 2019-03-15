@@ -1,0 +1,19 @@
+commit a1080474b0d763770baaf18db8a192c51c501985
+Author: PeterSz <petersz@vp.pl>
+Date:   Fri Mar 15 10:29:22 2019 +0100
+
+    access_ok takes now 2 parameters
+
+diff --git a/os_dep/linux/rtw_android.c b/os_dep/linux/rtw_android.c
+index 9f18d7a..183a861 100644
+--- a/os_dep/linux/rtw_android.c
++++ b/os_dep/linux/rtw_android.c
+@@ -626,7 +626,7 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
+ 		goto exit;
+ 	}
+ 
+-	if (!access_ok(VERIFY_READ, priv_cmd.buf, priv_cmd.total_len)){
++	if (!access_ok(priv_cmd.buf, priv_cmd.total_len)){
+ 	 	DBG_871X("%s: failed to access memory\n", __FUNCTION__);
+ 		ret = -EFAULT;
+ 		goto exit;
