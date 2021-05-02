@@ -39,7 +39,7 @@ Signed-off-by: Ondrej Jirman <megous@megous.com>
  	}
  
  	ret = clk_prepare_enable(gmac->tx_clk);
-@@ -1021,8 +1019,7 @@ static void sun8i_dwmac_exit(struct plat
+@@ -1023,8 +1021,7 @@ static void sun8i_dwmac_exit(struct plat
  
  	clk_disable_unprepare(gmac->tx_clk);
  
@@ -49,7 +49,7 @@ Signed-off-by: Ondrej Jirman <megous@megous.com>
  }
  
  static void sun8i_dwmac_set_mac_loopback(void __iomem *ioaddr, bool enable)
-@@ -1150,12 +1147,12 @@ static int sun8i_dwmac_probe(struct plat
+@@ -1152,12 +1149,12 @@ static int sun8i_dwmac_probe(struct plat
  	}
  
  	/* Optional regulator for PHY */

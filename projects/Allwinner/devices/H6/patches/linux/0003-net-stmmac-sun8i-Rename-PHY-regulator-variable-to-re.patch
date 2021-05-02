@@ -69,7 +69,7 @@ Signed-off-by: Ondrej Jirman <megous@megous.com>
  
  	return ret;
  }
-@@ -1019,7 +1020,7 @@ static void sun8i_dwmac_exit(struct plat
+@@ -1021,7 +1022,7 @@ static void sun8i_dwmac_exit(struct plat
  
  	clk_disable_unprepare(gmac->tx_clk);
  
@@ -78,7 +78,7 @@ Signed-off-by: Ondrej Jirman <megous@megous.com>
  }
  
  static void sun8i_dwmac_set_mac_loopback(void __iomem *ioaddr, bool enable)
-@@ -1147,11 +1148,9 @@ static int sun8i_dwmac_probe(struct plat
+@@ -1149,11 +1150,9 @@ static int sun8i_dwmac_probe(struct plat
  	}
  
  	/* Optional regulator for PHY */
