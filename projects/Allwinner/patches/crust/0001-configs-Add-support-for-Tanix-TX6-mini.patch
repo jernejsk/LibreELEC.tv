@@ -1,0 +1,28 @@
+From 3dde783bf8dfd6312188633153eb58042f0e9c36 Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Sun, 31 Oct 2021 09:50:37 +0100
+Subject: [PATCH] configs: Add support for Tanix TX6 mini
+
+Tanix TX6 mini is almost the same as TX6. However, it has different IR
+remote.
+
+Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+---
+ configs/tanix_tx6_mini_defconfig | 5 +++++
+ 1 file changed, 5 insertions(+)
+ create mode 100644 configs/tanix_tx6_mini_defconfig
+
+diff --git a/configs/tanix_tx6_mini_defconfig b/configs/tanix_tx6_mini_defconfig
+new file mode 100644
+index 000000000000..607824167e76
+--- /dev/null
++++ b/configs/tanix_tx6_mini_defconfig
+@@ -0,0 +1,5 @@
++CONFIG_PLATFORM_H6=y
++CONFIG_CIR=y
++CONFIG_CIR_PROTO_NEC=y
++CONFIG_CIR_USE_OSC24M=y
++CONFIG_CIR_WAKE_CODE=0x8051
+-- 
+2.33.1
+
