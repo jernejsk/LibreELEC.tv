@@ -10,7 +10,7 @@ PKG_ARCH="any"
 PKG_LICENSE="GPL"
 PKG_SITE="https://github.com/xbmc/screensaver.shadertoy"
 PKG_URL="https://github.com/xbmc/screensaver.shadertoy/archive/${PKG_VERSION}.tar.gz"
-PKG_DEPENDS_TARGET="toolchain kodi-platform glm"
+PKG_DEPENDS_TARGET="toolchain kodi-platform glm opengl"
 PKG_SECTION=""
 PKG_SHORTDESC="screensaver.shadertoy"
 PKG_LONGDESC="screensaver.shadertoy"
@@ -18,12 +18,6 @@ PKG_LONGDESC="screensaver.shadertoy"
 PKG_IS_ADDON="yes"
 PKG_ADDON_TYPE="xbmc.ui.screensaver"
 
-if [ ! "${OPENGL}" = "no" ]; then
-# for OpenGL (GLX) support
-  PKG_DEPENDS_TARGET+=" ${OPENGL} glew"
-fi
-
-if [ "${OPENGLES_SUPPORT}" = yes ]; then
-# for OpenGL-ES support
-  PKG_DEPENDS_TARGET+=" ${OPENGLES}"
+if [ "${OPENGL_SUPPORT}" = "yes" ]; then
+  PKG_DEPENDS_TARGET+=" glew"
 fi

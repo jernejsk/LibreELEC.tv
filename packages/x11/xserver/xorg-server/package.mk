@@ -8,7 +8,7 @@ PKG_SHA256="8dfd3d74ac18d32c821110b5231f31b66ada2de34f410012758a60ecb45f9feb"
 PKG_LICENSE="OSS"
 PKG_SITE="http://www.X.org"
 PKG_URL="https://github.com/freedesktop/xorg-xserver/archive/refs/tags/${PKG_NAME}-${PKG_VERSION}.tar.gz"
-PKG_DEPENDS_TARGET="toolchain util-macros font-util xorgproto libpciaccess libX11 libXfont2 libXinerama libxcvt libxshmfence libxkbfile libdrm openssl freetype pixman systemd xorg-launch-helper"
+PKG_DEPENDS_TARGET="toolchain util-macros font-util xorgproto libpciaccess libX11 libXfont2 libXinerama libxcvt libxshmfence libxkbfile libdrm openssl freetype pixman systemd xorg-launch-helper opengl"
 PKG_NEED_UNPACK="$(get_pkg_directory xf86-video-nvidia) $(get_pkg_directory xf86-video-nvidia-legacy)"
 PKG_LONGDESC="X.Org Server is the free and open-source implementation of the X Window System display server."
 
@@ -67,8 +67,8 @@ PKG_MESON_OPTS_TARGET="-Dxorg=true \
                        -Ddocs=false \
                        -Ddevel-docs=false"
 
-if [ ! "${OPENGL}" = "no" ]; then
-  PKG_DEPENDS_TARGET+=" ${OPENGL} libepoxy"
+if [ "${OPENGL_SUPPORT}" = "yes" ]; then
+  PKG_DEPENDS_TARGET+=" libepoxy"
   PKG_MESON_OPTS_TARGET+=" -Dglx=true \
                            -Ddri1=true \
                            -Dglamor=true"
@@ -90,7 +90,7 @@ post_makeinstall_target() {
       sed -i -e "s|@NVIDIA_VERSION@|$(get_pkg_version xf86-video-nvidia)|g" ${INSTALL}/usr/lib/xorg/xorg-configure
       sed -i -e "s|@NVIDIA_LEGACY_VERSION@|$(get_pkg_version xf86-video-nvidia-legacy)|g" ${INSTALL}/usr/lib/xorg/xorg-configure
 
-  if [ ! "${OPENGL}" = "no" ]; then
+  if [ "${OPENGL_SUPPORT}" = "yes" ]; then
     if [ -f ${INSTALL}/usr/lib/xorg/modules/extensions/libglx.so ]; then
       mv ${INSTALL}/usr/lib/xorg/modules/extensions/libglx.so \
          ${INSTALL}/usr/lib/xorg/modules/extensions/libglx_mesa.so # rename for cooperate with nvidia drivers

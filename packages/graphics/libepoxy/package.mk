@@ -13,16 +13,8 @@ PKG_SHA256="a7ced37f4102b745ac86d6a70a9da399cc139ff168ba6b8002b4d8d43c900c15"
 PKG_LICENSE="GPL"
 PKG_SITE="https://github.com/anholt/libepoxy"
 PKG_URL="https://github.com/anholt/libepoxy/archive/${PKG_VERSION}.tar.gz"
-PKG_DEPENDS_TARGET="toolchain"
+PKG_DEPENDS_TARGET="toolchain opengl"
 PKG_LONGDESC="Epoxy is a library for handling OpenGL function pointer management for you."
-
-if [ "${OPENGL_SUPPORT}" = "yes" ]; then
-  PKG_DEPENDS_TARGET+=" ${OPENGL}"
-fi
-
-if [ "${OPENGLES_SUPPORT}" = "yes" ]; then
-  PKG_DEPENDS_TARGET+=" ${OPENGLES}"
-fi
 
 if [ "${DISPLAYSERVER}" != "x11" ]; then
   PKG_MESON_OPTS_TARGET="-Dglx=no"

@@ -7,14 +7,8 @@ PKG_SHA256="9f111284b2ef1d3fce91928e249e6ca00796a036831b063a549a0f3b03557a95"
 PKG_LICENSE="GPL-3.0-or-later"
 PKG_SITE="https://github.com/glmark2/glmark2"
 PKG_URL="https://github.com/glmark2/glmark2/archive/${PKG_VERSION}.tar.gz"
-PKG_DEPENDS_TARGET="toolchain libjpeg-turbo libpng"
+PKG_DEPENDS_TARGET="toolchain libjpeg-turbo libpng opengl"
 PKG_LONGDESC="glmark2 is an OpenGL 2.0 and ES 2.0 benchmark"
-
-if [ "${OPENGL_SUPPORT}" = "yes" ]; then
-  PKG_DEPENDS_TARGET+=" ${OPENGL}"
-elif [ "${OPENGLES_SUPPORT}" = "yes" ]; then
-  PKG_DEPENDS_TARGET+=" ${OPENGLES}"
-fi
 
 case ${DISPLAYSERVER} in
   wl)

@@ -7,7 +7,7 @@ PKG_SHA256="32ded8c13b6398310fa27767378193dc1db6d78b006b70dbcbd3123a1445e746"
 PKG_LICENSE="GPL"
 PKG_SITE="https://mpv.io/"
 PKG_URL="https://github.com/mpv-player/mpv/archive/v${PKG_VERSION}.tar.gz"
-PKG_DEPENDS_TARGET="toolchain waf:host alsa ffmpeg libass libdrm lua52"
+PKG_DEPENDS_TARGET="toolchain waf:host alsa ffmpeg libass libdrm lua52 opengl"
 PKG_LONGDESC="A media player based on MPlayer and mplayer2. It supports a wide variety of video file formats, audio and video codecs, and subtitle types."
 PKG_TOOLCHAIN="manual"
 PKG_BUILD_FLAGS="-sysroot"
@@ -28,14 +28,6 @@ PKG_MANUAL_OPTS_TARGET="--prefix=/usr \
                         --enable-drm \
                         --enable-gbm \
                         --enable-egl-drm"
-
-if [ "${OPENGLES_SUPPORT}" = "yes" ]; then
-  PKG_DEPENDS_TARGET+=" ${OPENGLES}"
-fi
-
-if [ "${OPENGL_SUPPORT}" = "yes" ]; then
-  PKG_DEPENDS_TARGET+=" ${OPENGL}"
-fi
 
 if [ "${VAAPI_SUPPORT}" = "yes" ]; then
   PKG_DEPENDS_TARGET+=" libva"

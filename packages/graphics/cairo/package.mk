@@ -8,19 +8,13 @@ PKG_SHA256="4eebc4c2bad0402bc3f501db184417094657d111fb6c06f076a82ea191fe1faf"
 PKG_LICENSE="LGPL"
 PKG_SITE="https://cairographics.org/"
 PKG_URL="https://download.gnome.org/sources/cairo/$(get_pkg_version_maj_min)/${PKG_NAME}-${PKG_VERSION}.tar.xz"
-PKG_DEPENDS_TARGET="toolchain zlib freetype fontconfig glib libpng pixman"
+PKG_DEPENDS_TARGET="toolchain zlib freetype fontconfig glib libpng pixman opengl"
 PKG_LONGDESC="Cairo is a vector graphics library with cross-device output support."
 PKG_TOOLCHAIN="configure"
 
 configure_package() {
   if [ "${DISPLAYSERVER}" = "x11" ]; then
-    PKG_DEPENDS_TARGET+=" libXrender libX11 mesa"
-  fi
-
-  if [ "${OPENGL_SUPPORT}" = "yes" ]; then
-    PKG_DEPENDS_TARGET+=" ${OPENGL}"
-  elif [ "${OPENGLES_SUPPORT}" = "yes" ]; then
-    PKG_DEPENDS_TARGET+=" ${OPENGLES}"
+    PKG_DEPENDS_TARGET+=" libXrender libX11"
   fi
 }
 

@@ -24,10 +24,10 @@ if [ "${DISPLAYSERVER}" = "x11" ]; then
 fi
 
 if [ "${OPENGL_SUPPORT}" = "yes" ]; then
-  PKG_DEPENDS_TARGET+=" mesa glu"
+  PKG_DEPENDS_TARGET+=" opengl glu"
 fi
 
-if [ "${OPENGL}" = "no" ]; then
+if [ "${OPENGL_SUPPORT}" = "no" ]; then
   EXTRAOPTS="--without-opengl"
 fi
 

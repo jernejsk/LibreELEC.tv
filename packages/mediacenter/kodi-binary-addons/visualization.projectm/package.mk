@@ -10,7 +10,7 @@ PKG_ARCH="x86_64"
 PKG_LICENSE="GPL"
 PKG_SITE="https://github.com/xbmc/visualization.projectm"
 PKG_URL="https://github.com/xbmc/visualization.projectm/archive/${PKG_VERSION}.tar.gz"
-PKG_DEPENDS_TARGET="toolchain kodi-platform libprojectM"
+PKG_DEPENDS_TARGET="toolchain kodi-platform libprojectM opengl"
 PKG_SECTION=""
 PKG_SHORTDESC="visualization.projectm"
 PKG_LONGDESC="visualization.projectm"
@@ -18,7 +18,7 @@ PKG_LONGDESC="visualization.projectm"
 PKG_IS_ADDON="yes"
 PKG_ADDON_TYPE="xbmc.player.musicviz"
 
-if [ "${OPENGL}" = "no" ]; then
+if [ "${OPENGL_SUPPORT}" = "no" ]; then
   exit 0
 fi
 

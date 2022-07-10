@@ -8,7 +8,7 @@ PKG_SHA256="fe7cbf3127882e3fc7259a75a0cb585620272c51745d3852ab9dd87960697f2e"
 PKG_LICENSE="GPL"
 PKG_SITE="https://www.libsdl.org/"
 PKG_URL="https://www.libsdl.org/release/${PKG_NAME}-${PKG_VERSION}.tar.gz"
-PKG_DEPENDS_TARGET="toolchain alsa-lib systemd dbus"
+PKG_DEPENDS_TARGET="toolchain alsa-lib systemd dbus opengl"
 PKG_LONGDESC="A cross-platform multimedia library designed to provide fast access to the graphics framebuffer and audio device. "
 PKG_BUILD_FLAGS="+pic"
 
@@ -77,9 +77,7 @@ else
                          -DVIDEO_X11=OFF"
 fi
 
-if [ ! "${OPENGL}" = "no" ]; then
-  PKG_DEPENDS_TARGET+=" ${OPENGL}"
-
+if [ "${OPENGL_SUPPORT}" = "yes" ]; then
   PKG_CMAKE_OPTS_TARGET="${PKG_CMAKE_OPTS_TARGET} \
                          -DVIDEO_OPENGL=ON \
                          -DVIDEO_OPENGLES=OFF"

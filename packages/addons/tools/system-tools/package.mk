@@ -19,7 +19,6 @@ PKG_ADDON_TYPE="xbmc.python.script"
 
 PKG_DEPENDS_TARGET="toolchain \
                     autossh \
-                    bottom \
                     diffutils \
                     dstat \
                     dtach \
