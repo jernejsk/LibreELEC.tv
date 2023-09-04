@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Mon, 4 Sep 2023 19:54:51 +0200
+Subject: [PATCH] drm/bridge: dw-hdmi-cec: move done to the end of the list
+
+Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+---
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.c
+index e2bcdf8e1e53..7c2fdfb79afd 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.c
+@@ -133,10 +133,6 @@ static irqreturn_t dw_hdmi_cec_hardirq(int irq, void *data)
+ 		cec->tx_status = CEC_TX_STATUS_ERROR;
+ 		cec->tx_done = true;
+ 		ret = IRQ_WAKE_THREAD;
+-	} else if (stat & CEC_STAT_DONE) {
+-		cec->tx_status = CEC_TX_STATUS_OK;
+-		cec->tx_done = true;
+-		ret = IRQ_WAKE_THREAD;
+ 	} else if (stat & CEC_STAT_NACK) {
+ 		cec->tx_status = CEC_TX_STATUS_NACK;
+ 		cec->tx_done = true;
+@@ -145,6 +141,10 @@ static irqreturn_t dw_hdmi_cec_hardirq(int irq, void *data)
+ 		cec->tx_status = CEC_TX_STATUS_ARB_LOST;
+ 		cec->tx_done = true;
+ 		ret = IRQ_WAKE_THREAD;
++	} else if (stat & CEC_STAT_DONE) {
++		cec->tx_status = CEC_TX_STATUS_OK;
++		cec->tx_done = true;
++		ret = IRQ_WAKE_THREAD;
+ 	}
+ 
+ 	if (stat & CEC_STAT_EOM) {

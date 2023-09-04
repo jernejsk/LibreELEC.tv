@@ -1,12 +1,14 @@
-From f826ffb93b1ba0cfb9a5cfa3403813674331d4e0 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
-Date: Tue, 26 Feb 2019 20:45:14 +0000
-Subject: [PATCH 34/44] WIP: dw-hdmi-cec: sleep 100ms on error
+Date: Mon, 4 Sep 2023 20:01:34 +0200
+Subject: [PATCH] WIP: dw-hdmi-cec: sleep 100ms on error
 
 ---
- drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.c | 18 ++++++++++++++++--
- 1 file changed, 16 insertions(+), 2 deletions(-)
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
 
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.c
+index 7c2fdfb79afd..cb5a347e5596 100644
 --- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.c
 +++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi-cec.c
 @@ -4,6 +4,7 @@
@@ -17,12 +19,11 @@ Subject: [PATCH 34/44] WIP: dw-hdmi-cec: sleep 100ms on error
  #include <linux/interrupt.h>
  #include <linux/io.h>
  #include <linux/module.h>
-@@ -129,8 +130,15 @@ static irqreturn_t dw_hdmi_cec_hardirq(i
+@@ -129,7 +130,18 @@ static irqreturn_t dw_hdmi_cec_hardirq(int irq, void *data)
  
  	dw_hdmi_write(cec, stat, HDMI_IH_CEC_STAT0);
  
 -	if (stat & CEC_STAT_ERROR_INIT) {
--		cec->tx_status = CEC_TX_STATUS_ERROR;
 +	/* Status with both done and error_initiator bits have been seen
 +	 * on Rockchip RK3328 devices, transmit attempt seems to have failed
 +	 * when this happens, report as low drive and block cec-framework
@@ -32,21 +33,13 @@ Subject: [PATCH 34/44] WIP: dw-hdmi-cec: sleep 100ms on error
 +	if ((stat & (CEC_STAT_DONE|CEC_STAT_ERROR_INIT)) == (CEC_STAT_DONE|CEC_STAT_ERROR_INIT)) {
 +		pr_info("dw_hdmi_cec_hardirq: stat=%02x LOW_DRIVE\n", stat);
 +		cec->tx_status = CEC_TX_STATUS_LOW_DRIVE;
- 		cec->tx_done = true;
- 		ret = IRQ_WAKE_THREAD;
- 	} else if (stat & CEC_STAT_DONE) {
-@@ -141,6 +149,10 @@ static irqreturn_t dw_hdmi_cec_hardirq(i
- 		cec->tx_status = CEC_TX_STATUS_NACK;
- 		cec->tx_done = true;
- 		ret = IRQ_WAKE_THREAD;
-+	} else if (stat & CEC_STAT_ERROR_INIT) {
-+		cec->tx_status = CEC_TX_STATUS_ERROR;
 +		cec->tx_done = true;
 +		ret = IRQ_WAKE_THREAD;
- 	}
- 
- 	if (stat & CEC_STAT_EOM) {
-@@ -173,6 +185,8 @@ static irqreturn_t dw_hdmi_cec_thread(in
++	} else if (stat & CEC_STAT_ERROR_INIT) {
+ 		cec->tx_status = CEC_TX_STATUS_ERROR;
+ 		cec->tx_done = true;
+ 		ret = IRQ_WAKE_THREAD;
+@@ -177,6 +189,8 @@ static irqreturn_t dw_hdmi_cec_thread(int irq, void *data)
  
  	if (cec->tx_done) {
  		cec->tx_done = false;
