@@ -1,0 +1,129 @@
+From b600e7cdf8c91fc26c1f27b295da3590d38b5ee9 Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Fri, 14 Oct 2022 20:15:43 +0200
+Subject: [PATCH] iommu/sun50i: Convert to map_pages/unmap_pages
+
+Convert driver to use map_pages and unmap_pages. Since functions operate
+on page table, extend them to be able to operate on whole table, not
+just one entry.
+
+Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+---
+Hi!
+
+I'm not sure if it makes sense to check validity of page table entry when
+unmaping pages makes sense. What do you think?
+
+Best regards,
+Jernej
+
+ drivers/iommu/sun50i-iommu.c | 55 +++++++++++++++++++++---------------
+ 1 file changed, 33 insertions(+), 22 deletions(-)
+
+diff --git a/drivers/iommu/sun50i-iommu.c b/drivers/iommu/sun50i-iommu.c
+index 74c5cb93e900..be6102730a56 100644
+--- a/drivers/iommu/sun50i-iommu.c
++++ b/drivers/iommu/sun50i-iommu.c
+@@ -589,11 +589,12 @@ static u32 *sun50i_dte_get_page_table(struct sun50i_iommu_domain *sun50i_domain,
+ }
+ 
+ static int sun50i_iommu_map(struct iommu_domain *domain, unsigned long iova,
+-			    phys_addr_t paddr, size_t size, int prot, gfp_t gfp)
++			    phys_addr_t paddr, size_t pgsize, size_t pgcount,
++			    int prot, gfp_t gfp, size_t *mapped)
+ {
+ 	struct sun50i_iommu_domain *sun50i_domain = to_sun50i_domain(domain);
+ 	struct sun50i_iommu *iommu = sun50i_domain->iommu;
+-	u32 pte_index;
++	u32 pte_index, count, i;
+ 	u32 *page_table, *pte_addr;
+ 	int ret = 0;
+ 
+@@ -604,45 +605,55 @@ static int sun50i_iommu_map(struct iommu_domain *domain, unsigned long iova,
+ 	}
+ 
+ 	pte_index = sun50i_iova_get_pte_index(iova);
+-	pte_addr = &page_table[pte_index];
+-	if (unlikely(sun50i_pte_is_page_valid(*pte_addr))) {
+-		phys_addr_t page_phys = sun50i_pte_get_page_address(*pte_addr);
+-		dev_err(iommu->dev,
+-			"iova %pad already mapped to %pa cannot remap to %pa prot: %#x\n",
+-			&iova, &page_phys, &paddr, prot);
+-		ret = -EBUSY;
+-		goto out;
++	count = min(pgcount, (size_t)NUM_PT_ENTRIES - pte_index);
++	for (i = 0; i < count; i++) {
++		pte_addr = &page_table[pte_index + i];
++		if (unlikely(sun50i_pte_is_page_valid(*pte_addr))) {
++			phys_addr_t page_phys = sun50i_pte_get_page_address(*pte_addr);
++
++			dev_err(iommu->dev,
++				"iova %pad already mapped to %pa cannot remap to %pa prot: %#x\n",
++				&iova, &page_phys, &paddr, prot);
++			ret = -EBUSY;
++			goto out;
++		}
++		*pte_addr = sun50i_mk_pte(paddr, prot);
++		paddr += SPAGE_SIZE;
+ 	}
+ 
+-	*pte_addr = sun50i_mk_pte(paddr, prot);
+-	sun50i_table_flush(sun50i_domain, pte_addr, 1);
++	sun50i_table_flush(sun50i_domain, &page_table[pte_index], i);
++	*mapped = i * SPAGE_SIZE;
+ 
+ out:
+ 	return ret;
+ }
+ 
+ static size_t sun50i_iommu_unmap(struct iommu_domain *domain, unsigned long iova,
+-				 size_t size, struct iommu_iotlb_gather *gather)
++				 size_t pgsize, size_t pgcount,
++				 struct iommu_iotlb_gather *gather)
+ {
+ 	struct sun50i_iommu_domain *sun50i_domain = to_sun50i_domain(domain);
++	u32 dte, count, i, pte_index;
+ 	phys_addr_t pt_phys;
+ 	u32 *pte_addr;
+-	u32 dte;
+ 
+ 	dte = sun50i_domain->dt[sun50i_iova_get_dte_index(iova)];
+ 	if (!sun50i_dte_is_pt_valid(dte))
+ 		return 0;
+ 
+ 	pt_phys = sun50i_dte_get_pt_address(dte);
+-	pte_addr = (u32 *)phys_to_virt(pt_phys) + sun50i_iova_get_pte_index(iova);
++	pte_index = sun50i_iova_get_pte_index(iova);
++	pte_addr = (u32 *)phys_to_virt(pt_phys) + pte_index;
+ 
+-	if (!sun50i_pte_is_page_valid(*pte_addr))
+-		return 0;
++	count = min(pgcount, (size_t)NUM_PT_ENTRIES - pte_index);
++	for (i = 0; i < count; i++)
++		if (!sun50i_pte_is_page_valid(pte_addr[i]))
++			break;
+ 
+-	memset(pte_addr, 0, sizeof(*pte_addr));
+-	sun50i_table_flush(sun50i_domain, pte_addr, 1);
++	memset(pte_addr, 0, sizeof(*pte_addr) * i);
++	sun50i_table_flush(sun50i_domain, pte_addr, i);
+ 
+-	return SZ_4K;
++	return i * SPAGE_SIZE;
+ }
+ 
+ static phys_addr_t sun50i_iommu_iova_to_phys(struct iommu_domain *domain,
+@@ -838,8 +849,8 @@ static const struct iommu_ops sun50i_iommu_ops = {
+ 		.iotlb_sync_map = sun50i_iommu_iotlb_sync_map,
+ 		.iotlb_sync	= sun50i_iommu_iotlb_sync,
+ 		.iova_to_phys	= sun50i_iommu_iova_to_phys,
+-		.map		= sun50i_iommu_map,
+-		.unmap		= sun50i_iommu_unmap,
++		.map_pages	= sun50i_iommu_map,
++		.unmap_pages	= sun50i_iommu_unmap,
+ 		.free		= sun50i_iommu_domain_free,
+ 	}
+ };
+-- 
+2.42.0
+

@@ -1,0 +1,105 @@
+diff --git a/drivers/iommu/sun50i-iommu.c b/drivers/iommu/sun50i-iommu.c
+index be6102730a56..d3856ecd97c9 100644
+--- a/drivers/iommu/sun50i-iommu.c
++++ b/drivers/iommu/sun50i-iommu.c
+@@ -120,6 +120,7 @@ struct sun50i_iommu_domain {
+ 	/* L1 Page Table */
+ 	u32 *dt;
+ 	dma_addr_t dt_dma;
++	spinlock_t dt_lock; /* lock for modifying page directory table */
+ 
+ 	struct sun50i_iommu *iommu;
+ };
+@@ -596,8 +597,11 @@ static int sun50i_iommu_map(struct iommu_domain *domain, unsigned long iova,
+ 	struct sun50i_iommu *iommu = sun50i_domain->iommu;
+ 	u32 pte_index, count, i;
+ 	u32 *page_table, *pte_addr;
++	unsigned long flags;
+ 	int ret = 0;
+ 
++	spin_lock_irqsave(&sun50i_domain->dt_lock, flags);
++
+ 	page_table = sun50i_dte_get_page_table(sun50i_domain, iova, gfp);
+ 	if (IS_ERR(page_table)) {
+ 		ret = PTR_ERR(page_table);
+@@ -625,6 +629,8 @@ static int sun50i_iommu_map(struct iommu_domain *domain, unsigned long iova,
+ 	*mapped = i * SPAGE_SIZE;
+ 
+ out:
++	spin_unlock_irqrestore(&sun50i_domain->dt_lock, flags);
++
+ 	return ret;
+ }
+ 
+@@ -633,13 +639,16 @@ static size_t sun50i_iommu_unmap(struct iommu_domain *domain, unsigned long iova
+ 				 struct iommu_iotlb_gather *gather)
+ {
+ 	struct sun50i_iommu_domain *sun50i_domain = to_sun50i_domain(domain);
+-	u32 dte, count, i, pte_index;
++	u32 dte, count, i = 0, pte_index;
++	unsigned long flags;
+ 	phys_addr_t pt_phys;
+ 	u32 *pte_addr;
+ 
++	spin_lock_irqsave(&sun50i_domain->dt_lock, flags);
++
+ 	dte = sun50i_domain->dt[sun50i_iova_get_dte_index(iova)];
+ 	if (!sun50i_dte_is_pt_valid(dte))
+-		return 0;
++		goto out;
+ 
+ 	pt_phys = sun50i_dte_get_pt_address(dte);
+ 	pte_index = sun50i_iova_get_pte_index(iova);
+@@ -653,6 +662,9 @@ static size_t sun50i_iommu_unmap(struct iommu_domain *domain, unsigned long iova
+ 	memset(pte_addr, 0, sizeof(*pte_addr) * i);
+ 	sun50i_table_flush(sun50i_domain, pte_addr, i);
+ 
++out:
++	spin_unlock_irqrestore(&sun50i_domain->dt_lock, flags);
++
+ 	return i * SPAGE_SIZE;
+ }
+ 
+@@ -660,22 +672,30 @@ static phys_addr_t sun50i_iommu_iova_to_phys(struct iommu_domain *domain,
+ 					     dma_addr_t iova)
+ {
+ 	struct sun50i_iommu_domain *sun50i_domain = to_sun50i_domain(domain);
+-	phys_addr_t pt_phys;
++	phys_addr_t pt_phys, phys = 0;
++	unsigned long flags;
+ 	u32 *page_table;
+ 	u32 dte, pte;
+ 
++	spin_lock_irqsave(&sun50i_domain->dt_lock, flags);
++
+ 	dte = sun50i_domain->dt[sun50i_iova_get_dte_index(iova)];
+ 	if (!sun50i_dte_is_pt_valid(dte))
+-		return 0;
++		goto out;
+ 
+ 	pt_phys = sun50i_dte_get_pt_address(dte);
+ 	page_table = (u32 *)phys_to_virt(pt_phys);
+ 	pte = page_table[sun50i_iova_get_pte_index(iova)];
+ 	if (!sun50i_pte_is_page_valid(pte))
+-		return 0;
++		goto out;
+ 
+-	return sun50i_pte_get_page_address(pte) +
++	phys = sun50i_pte_get_page_address(pte) +
+ 		sun50i_iova_get_page_offset(iova);
++
++out:
++	spin_unlock_irqrestore(&sun50i_domain->dt_lock, flags);
++
++	return phys;
+ }
+ 
+ static struct iommu_domain *sun50i_iommu_domain_alloc(unsigned type)
+@@ -696,6 +716,7 @@ static struct iommu_domain *sun50i_iommu_domain_alloc(unsigned type)
+ 		goto err_free_domain;
+ 
+ 	refcount_set(&sun50i_domain->refcnt, 1);
++	spin_lock_init(&sun50i_domain->dt_lock);
+ 
+ 	sun50i_domain->domain.geometry.aperture_start = 0;
+ 	sun50i_domain->domain.geometry.aperture_end = DMA_BIT_MASK(32);
