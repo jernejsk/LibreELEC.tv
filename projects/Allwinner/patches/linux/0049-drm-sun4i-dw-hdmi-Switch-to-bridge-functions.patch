@@ -67,7 +67,7 @@ index 8f8d3bdba5ce..93831cdf1917 100644
 +		return;
 +
 +	if (status == connector_status_connected) {
-+		edid = drm_bridge_get_edid(hdmi->hdmi_bridge, hdmi->connector);
++		// edid = drm_bridge_get_edid(hdmi->hdmi_bridge, hdmi->connector);
 +		if (edid)
 +			cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier,
 +							     edid);
