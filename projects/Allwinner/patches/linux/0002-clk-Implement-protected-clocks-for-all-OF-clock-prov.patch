@@ -93,7 +93,7 @@ Signed-off-by: Samuel Holland <samuel@sholland.org>
 +	clkspec.np         = node;
 +	clkspec.args_count = nr_cells;
 +
-+	of_property_for_each_u32(node, "protected-clocks", prop, cur, clkspec.args[0]) {
++	of_property_for_each_u32(node, "protected-clocks", clkspec.args[0]) {
 +		/* read the remainder of the clock specifier */
 +		for (i = 1; i < nr_cells; ++i) {
 +			cur = of_prop_next_u32(prop, cur, &clkspec.args[i]);
