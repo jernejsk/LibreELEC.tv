@@ -2114,7 +2114,7 @@ new file mode 100644
 index 000000000000..3acbdf575ee2
 --- /dev/null
 +++ b/drivers/gpu/drm/imx/mhdp/cdns-mhdp-imxdrv.c
-@@ -0,0 +1,259 @@
+@@ -0,0 +1,257 @@
 +/*
 + * copyright (c) 2019 nxp semiconductor, inc.
 + *
@@ -2348,11 +2348,9 @@ index 000000000000..3acbdf575ee2
 +	return component_add(&pdev->dev, &cdns_mhdp_imx_ops);
 +}
 +
-+static int cdns_mhdp_imx_remove(struct platform_device *pdev)
++static void cdns_mhdp_imx_remove(struct platform_device *pdev)
 +{
 +	component_del(&pdev->dev, &cdns_mhdp_imx_ops);
-+
-+	return 0;
 +}
 +
 +static const struct dev_pm_ops cdns_mhdp_imx_pm_ops = {
