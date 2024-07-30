@@ -492,7 +492,7 @@ index 329e8bf8cd20..bda91c3e2bb7 100644
 +static bool sun8i_vi_layer_format_mod_supported(struct drm_plane *plane,
 +						u32 format, u64 modifier)
 +{
-+	struct sun8i_vi_layer *layer = plane_to_sun8i_vi_layer(plane);
++	struct sun8i_layer *layer = plane_to_sun8i_layer(plane);
 +
 +	return sun50i_afbc_format_mod_supported(layer->mixer, format, modifier);
 +}
