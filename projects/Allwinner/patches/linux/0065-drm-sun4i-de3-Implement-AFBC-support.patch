@@ -372,6 +372,26 @@ index 000000000000..cea685c86855
 +void sun50i_afbc_disable(struct sun8i_mixer *mixer, unsigned int channel);
 +
 +#endif
+diff --git a/drivers/gpu/drm/sun4i/sun8i_mixer.c b/drivers/gpu/drm/sun4i/sun8i_mixer.c
+--- a/drivers/gpu/drm/sun4i/sun8i_mixer.c
++++ b/drivers/gpu/drm/sun4i/sun8i_mixer.c
+@@ -26,6 +26,7 @@
+ #include <uapi/linux/media-bus-format.h>
+ 
+ #include "sun4i_drv.h"
++#include "sun50i_afbc.h"
+ #include "sun50i_fmt.h"
+ #include "sun8i_mixer.h"
+ #include "sun8i_ui_layer.h"
+@@ -272,6 +273,8 @@
+ 		val = enable ? SUN8I_MIXER_CHAN_VI_LAYER_ATTR_EN : 0;
+ 		mask = SUN8I_MIXER_CHAN_VI_LAYER_ATTR_EN;
+ 		reg = SUN8I_MIXER_CHAN_VI_LAYER_ATTR(ch_base, layer->overlay);
++		if (!enable && layer->mixer->cfg->is_de3)
++			sun50i_afbc_disable(layer->mixer, layer->channel);
+ 	}
+ 
+ 	regmap_update_bits(layer->mixer->engine.regs, reg, mask, val);
 diff --git a/drivers/gpu/drm/sun4i/sun8i_vi_layer.c b/drivers/gpu/drm/sun4i/sun8i_vi_layer.c
 index 329e8bf8cd20..bda91c3e2bb7 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_vi_layer.c
@@ -430,7 +450,7 @@ index 329e8bf8cd20..bda91c3e2bb7 100644
  static int sun8i_vi_layer_atomic_check(struct drm_plane *plane,
  				       struct drm_atomic_state *state)
  {
-@@ -346,19 +357,48 @@ static void sun8i_vi_layer_atomic_update(struct drm_plane *plane,
+@@ -346,19 +357,44 @@ static void sun8i_vi_layer_atomic_update(struct drm_plane *plane,
  									   plane);
  	struct sun8i_layer *layer = plane_to_sun8i_layer(plane);
  	unsigned int zpos = new_state->normalized_zpos;
@@ -439,11 +459,7 @@ index 329e8bf8cd20..bda91c3e2bb7 100644
 +	bool afbc = drm_is_afbc(fb->modifier);
  
  	if (!new_state->crtc || !new_state->visible)
-+	{
-+		if (mixer->cfg->is_de3)
-+			sun50i_afbc_disable(mixer, layer->channel);
  		return;
-+	}
 +
 +	if (afbc) {
 +		u32 fmt_type;
