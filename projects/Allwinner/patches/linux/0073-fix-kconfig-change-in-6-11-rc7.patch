@@ -1,0 +1,10 @@
+--- a/drivers/gpu/drm/sun4i/Kconfig	2024-09-09 10:53:20.557432996 +0000
++++ b/drivers/gpu/drm/sun4i/Kconfig	2024-09-09 11:08:45.725338422 +0000
+@@ -3,6 +3,7 @@
+ 	tristate "DRM Support for Allwinner A10 Display Engine"
+ 	depends on DRM && COMMON_CLK
+ 	depends on ARCH_SUNXI || COMPILE_TEST
++	select DRM_BRIDGE_CONNECTOR
+ 	select DRM_GEM_DMA_HELPER
+ 	select DRM_KMS_HELPER
+ 	select DRM_PANEL
