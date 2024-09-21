@@ -1,4 +1,4 @@
-From 8a5dc874639e7fbcbda83b26c5ae9d9a3e3955f9 Mon Sep 17 00:00:00 2001
+From 379d41e63776b574ed37486dd60ac341fbad4f4a Mon Sep 17 00:00:00 2001
 From: Stephan Sundermann <stephansundermann@gmail.com>
 Date: Thu, 11 Apr 2024 17:11:32 +0200
 Subject: [PATCH 1/7] [ffmpeg] Update to 7.0
@@ -10,12 +10,12 @@ Subject: [PATCH 1/7] [ffmpeg] Update to 7.0
  tools/depends/target/ffmpeg/FFMPEG-VERSION    |   4 +-
  xbmc/cdrip/EncoderFFmpeg.cpp                  |   2 +-
  xbmc/cdrip/EncoderFFmpeg.h                    |   2 +-
- .../ActiveAE/ActiveAEResampleFFMPEG.cpp       | 110 +++++++++---------
+ .../ActiveAE/ActiveAEResampleFFMPEG.cpp       | 116 +++++++++---------
  .../DVDDemuxers/DVDDemuxFFmpeg.cpp            |  71 +----------
- 8 files changed, 69 insertions(+), 143 deletions(-)
+ 8 files changed, 72 insertions(+), 146 deletions(-)
 
 diff --git a/cmake/modules/FindFFMPEG.cmake b/cmake/modules/FindFFMPEG.cmake
-index 26dd6e8301..49f18ca9c2 100644
+index 26dd6e8301da1..49f18ca9c2ad3 100644
 --- a/cmake/modules/FindFFMPEG.cmake
 +++ b/cmake/modules/FindFFMPEG.cmake
 @@ -168,14 +168,14 @@ if(WITH_FFMPEG)
@@ -42,7 +42,7 @@ index 26dd6e8301..49f18ca9c2 100644
  
  # Allows building with external ffmpeg not found in system paths,
 diff --git a/tools/buildsteps/windows/ffmpeg_options.txt b/tools/buildsteps/windows/ffmpeg_options.txt
-index 5034ff26c4..776c0b4b35 100644
+index 5034ff26c4073..776c0b4b35ac0 100644
 --- a/tools/buildsteps/windows/ffmpeg_options.txt
 +++ b/tools/buildsteps/windows/ffmpeg_options.txt
 @@ -1,5 +1,4 @@
@@ -52,7 +52,7 @@ index 5034ff26c4..776c0b4b35 100644
  --disable-cuvid
  --disable-devices
 diff --git a/tools/depends/target/ffmpeg/CMakeLists.txt b/tools/depends/target/ffmpeg/CMakeLists.txt
-index 5cadafe294..8924dc8c73 100644
+index 5cadafe29485b..8924dc8c7305b 100644
 --- a/tools/depends/target/ffmpeg/CMakeLists.txt
 +++ b/tools/depends/target/ffmpeg/CMakeLists.txt
 @@ -92,14 +92,12 @@ elseif(CORE_SYSTEM_NAME STREQUAL android)
@@ -73,19 +73,19 @@ index 5cadafe294..8924dc8c73 100644
                            --disable-securetransport
                )
 diff --git a/tools/depends/target/ffmpeg/FFMPEG-VERSION b/tools/depends/target/ffmpeg/FFMPEG-VERSION
-index f2ba09402e..60b8887de3 100644
+index f2ba09402e25a..127a96f1b529f 100644
 --- a/tools/depends/target/ffmpeg/FFMPEG-VERSION
 +++ b/tools/depends/target/ffmpeg/FFMPEG-VERSION
 @@ -1,5 +1,5 @@
  LIBNAME=ffmpeg
 -VERSION=6.0.1
-+VERSION=7.0.1
++VERSION=7.0.2
  ARCHIVE=$(LIBNAME)-$(VERSION).tar.gz
 -SHA512=945e34840092dc0fd3824eb1af2be79868af2afb4fe13159b19a9bcfc464cc4d53243c13ff065199290e9393ddbf4b1c5c8abccf83a31a31d6c7490e499fd1fc
-+SHA512=43b639b0bc0597e95dea2dce3e925f4b71ca8c4d9eadaef614941053e287f2d5c2e78d95413f0f7142da0f6ea1dbf443457e4fa1c2296cd8cf4081c185ed9c04
++SHA512=294c411d55d0ef1322d7e882ff0c97d335c9200787ab94ab27ea7a9e9eba272495dedf3a23687271a327fb14e59abc662ef909dd6955bf41a26f2b795196726d
  
 diff --git a/xbmc/cdrip/EncoderFFmpeg.cpp b/xbmc/cdrip/EncoderFFmpeg.cpp
-index 85f5fa412e..907d2591dd 100644
+index 85f5fa412e961..907d2591ddba7 100644
 --- a/xbmc/cdrip/EncoderFFmpeg.cpp
 +++ b/xbmc/cdrip/EncoderFFmpeg.cpp
 @@ -235,7 +235,7 @@ void CEncoderFFmpeg::SetTag(const std::string& tag, const std::string& value)
@@ -98,10 +98,10 @@ index 85f5fa412e..907d2591dd 100644
    CEncoderFFmpeg* enc = static_cast<CEncoderFFmpeg*>(opaque);
    if (enc->Write(buf, buf_size) != buf_size)
 diff --git a/xbmc/cdrip/EncoderFFmpeg.h b/xbmc/cdrip/EncoderFFmpeg.h
-index 48471a4b10..4e9f0f5bbb 100644
+index 48471a4b10f70..4e9f0f5bbbad4 100644
 --- a/xbmc/cdrip/EncoderFFmpeg.h
 +++ b/xbmc/cdrip/EncoderFFmpeg.h
-@@ -33,7 +33,7 @@ public:
+@@ -33,7 +33,7 @@ class CEncoderFFmpeg : public CEncoder
    bool Close() override;
  
  private:
@@ -111,10 +111,10 @@ index 48471a4b10..4e9f0f5bbb 100644
  
    void SetTag(const std::string& tag, const std::string& value);
 diff --git a/xbmc/cores/AudioEngine/Engines/ActiveAE/ActiveAEResampleFFMPEG.cpp b/xbmc/cores/AudioEngine/Engines/ActiveAE/ActiveAEResampleFFMPEG.cpp
-index e897cbd3ea..6fce0af981 100644
+index 70e946a1160ef..a4fc91554f471 100644
 --- a/xbmc/cores/AudioEngine/Engines/ActiveAE/ActiveAEResampleFFMPEG.cpp
 +++ b/xbmc/cores/AudioEngine/Engines/ActiveAE/ActiveAEResampleFFMPEG.cpp
-@@ -66,51 +66,7 @@ bool CActiveAEResampleFFMPEG::Init(SampleConfig dstConfig, SampleConfig srcConfi
+@@ -73,54 +73,7 @@ bool CActiveAEResampleFFMPEG::Init(SampleConfig dstConfig,
    AVChannelLayout dstChLayout = {};
    AVChannelLayout srcChLayout = {};
  
@@ -129,6 +129,9 @@ index e897cbd3ea..6fce0af981 100644
 -    CLog::Log(LOGERROR, "CActiveAEResampleFFMPEG::Init - create context failed");
 -    return false;
 -  }
+-
+-  if (sublevel > 0.0f)
+-    av_opt_set_double(m_pContext, "lfe_mix_level", static_cast<double>(sublevel), 0);
 -
 -  if(quality == AE_QUALITY_HIGH)
 -  {
@@ -167,7 +170,7 @@ index e897cbd3ea..6fce0af981 100644
    if (remapLayout)
    {
      // one-to-one mapping of channels
-@@ -120,28 +76,19 @@ bool CActiveAEResampleFFMPEG::Init(SampleConfig dstConfig, SampleConfig srcConfi
+@@ -130,28 +83,19 @@ bool CActiveAEResampleFFMPEG::Init(SampleConfig dstConfig,
      m_dst_chan_layout = 0;
      for (unsigned int out=0; out<remapLayout->Count(); out++)
      {
@@ -198,7 +201,7 @@ index e897cbd3ea..6fce0af981 100644
      av_channel_layout_from_mask(&dstChLayout, m_dst_chan_layout);
      for (int out=0; out<m_dst_channels; out++)
      {
-@@ -171,15 +118,64 @@ bool CActiveAEResampleFFMPEG::Init(SampleConfig dstConfig, SampleConfig srcConfi
+@@ -181,15 +125,67 @@ bool CActiveAEResampleFFMPEG::Init(SampleConfig dstConfig,
        }
      }
  
@@ -219,6 +222,9 @@ index e897cbd3ea..6fce0af981 100644
 +  }
  
 -    if (swr_set_matrix(m_pContext, (const double*)m_rematrix, AE_CH_MAX) < 0)
++  if (sublevel > 0.0f)
++    av_opt_set_double(m_pContext, "lfe_mix_level", static_cast<double>(sublevel), 0);
++
 +  if (hasMatrix)
 +  {
 +    if (swr_set_matrix(m_pContext, reinterpret_cast<const double*>(m_rematrix), AE_CH_MAX) < 0)
@@ -265,7 +271,7 @@ index e897cbd3ea..6fce0af981 100644
    {
      CLog::Log(LOGERROR, "CActiveAEResampleFFMPEG::Init - init resampler failed");
 diff --git a/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxFFmpeg.cpp b/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxFFmpeg.cpp
-index 458b54114d..3c6fccceb0 100644
+index 458b54114df84..3c6fccceb069f 100644
 --- a/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxFFmpeg.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxFFmpeg.cpp
 @@ -376,74 +376,7 @@ bool CDVDDemuxFFmpeg::Open(const std::shared_ptr<CDVDInputStream>& pInput, bool
@@ -353,11 +359,8 @@ index 458b54114d..3c6fccceb0 100644
          m_seekToKeyFrame = true;
        m_currentPts = DVD_NOPTS_VALUE;
      }
--- 
-2.45.2
 
-
-From bf730bf4b18f4967e5616832ea6ddaabbd486cd9 Mon Sep 17 00:00:00 2001
+From a4811921fc567ec6cd22376f3da8e0e05275898e Mon Sep 17 00:00:00 2001
 From: Stephan Sundermann <stephansundermann@gmail.com>
 Date: Thu, 11 Apr 2024 17:13:36 +0200
 Subject: [PATCH 2/7] [ffmpeg] Remove deprecated use of FF_API_INTERLACED_FRAME
@@ -370,7 +373,7 @@ Subject: [PATCH 2/7] [ffmpeg] Remove deprecated use of FF_API_INTERLACED_FRAME
  4 files changed, 13 insertions(+), 9 deletions(-)
 
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
-index eb2943bb8c..4da0722d5c 100644
+index eb2943bb8ccb9..4da0722d5c118 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.cpp
 @@ -582,8 +582,9 @@ void CDVDVideoCodecDRMPRIME::SetPictureParams(VideoPicture* pVideoPicture)
@@ -386,7 +389,7 @@ index eb2943bb8c..4da0722d5c 100644
  
    if (m_codecControlFlags & DVD_CODEC_CTRL_DROP)
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecFFmpeg.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecFFmpeg.cpp
-index d66378fa07..9586d211e9 100644
+index d66378fa07886..9586d211e9156 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecFFmpeg.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecFFmpeg.cpp
 @@ -792,12 +792,12 @@ CDVDVideoCodec::VCReturn CDVDVideoCodecFFmpeg::GetPicture(VideoPicture* pVideoPi
@@ -417,7 +420,7 @@ index d66378fa07..9586d211e9 100644
    if (m_codecControlFlags & DVD_CODEC_CTRL_DROP)
    {
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/VAAPI.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/VAAPI.cpp
-index 6ace85dc92..cc3629d33d 100644
+index 6ace85dc9244d..cc3629d33d620 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/VAAPI.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/VAAPI.cpp
 @@ -3070,8 +3070,10 @@ bool CFFmpegPostproc::AddPicture(CVaapiDecodedPicture &inPic)
@@ -434,7 +437,7 @@ index 6ace85dc92..cc3629d33d 100644
    if (inPic.DVDPic.pts == DVD_NOPTS_VALUE)
      m_pFilterFrameIn->pts = AV_NOPTS_VALUE;
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/VTB.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/VTB.cpp
-index 1f71f643d2..567d63559d 100644
+index 1f71f643d229a..567d63559d456 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/VTB.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/VTB.cpp
 @@ -196,7 +196,7 @@ CDVDVideoCodec::VCReturn CDecoder::Decode(AVCodecContext* avctx, AVFrame* frame)
@@ -446,11 +449,8 @@ index 1f71f643d2..567d63559d 100644
        return CDVDVideoCodec::VC_FATAL;
  
      if (m_renderBuffer)
--- 
-2.45.2
 
-
-From 7a8da7485e0f28c544dc088de281f354cce5475b Mon Sep 17 00:00:00 2001
+From f213ec9a9c25ce5d8583fa5ec4df1ab7a2fc54f2 Mon Sep 17 00:00:00 2001
 From: Stephan Sundermann <stephansundermann@gmail.com>
 Date: Thu, 11 Apr 2024 17:14:48 +0200
 Subject: [PATCH 3/7] [ffmpeg] Remove deprecated use of avcodec_close
@@ -460,7 +460,7 @@ Subject: [PATCH 3/7] [ffmpeg] Remove deprecated use of avcodec_close
  1 file changed, 1 deletion(-)
 
 diff --git a/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxClient.cpp b/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxClient.cpp
-index 0cdf8c3864..477a2e82ec 100644
+index 0cdf8c3864ac3..477a2e82ece51 100644
 --- a/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxClient.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxClient.cpp
 @@ -188,7 +188,6 @@ bool CDVDDemuxClient::ParsePacket(DemuxPacket* pkt)
@@ -471,11 +471,8 @@ index 0cdf8c3864..477a2e82ec 100644
        }
      }
      av_packet_free(&avpkt);
--- 
-2.45.2
 
-
-From f0bbfcfc87f8224ba7393b19b5aef6411effd10e Mon Sep 17 00:00:00 2001
+From 12065bec3c9ea2309d8089e224c3e26465569396 Mon Sep 17 00:00:00 2001
 From: Stephan Sundermann <stephansundermann@gmail.com>
 Date: Thu, 11 Apr 2024 17:15:16 +0200
 Subject: [PATCH 4/7] [ffmpeg] Remove deprecated use av_stream_get_side_data
@@ -485,7 +482,7 @@ Subject: [PATCH 4/7] [ffmpeg] Remove deprecated use av_stream_get_side_data
  1 file changed, 32 insertions(+), 21 deletions(-)
 
 diff --git a/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxFFmpeg.cpp b/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxFFmpeg.cpp
-index 3c6fccceb0..b63453dc70 100644
+index 3c6fccceb069f..b63453dc707e6 100644
 --- a/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxFFmpeg.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxFFmpeg.cpp
 @@ -1650,42 +1650,49 @@ CDemuxStream* CDVDDemuxFFmpeg::AddStream(int streamIdx)
@@ -579,11 +576,8 @@ index 3c6fccceb0..b63453dc70 100644
      hdrType = StreamHdrType::HDR_TYPE_HDR10;
  
    return hdrType;
--- 
-2.45.2
 
-
-From baf04676aad4431bd3370510e4977af56a08973c Mon Sep 17 00:00:00 2001
+From 17125803ec8e329b920bb7993d14c799a9a1a17d Mon Sep 17 00:00:00 2001
 From: Stephan Sundermann <stephansundermann@gmail.com>
 Date: Thu, 11 Apr 2024 17:15:43 +0200
 Subject: [PATCH 5/7] [ffmpeg] Remove CrystalHD hw acceleration strings
@@ -593,7 +587,7 @@ Subject: [PATCH 5/7] [ffmpeg] Remove CrystalHD hw acceleration strings
  1 file changed, 2 insertions(+), 9 deletions(-)
 
 diff --git a/addons/resource.language.en_gb/resources/strings.po b/addons/resource.language.en_gb/resources/strings.po
-index d0064af1b9..37b2edf293 100644
+index abc6949849d8e..0a67421cae26d 100644
 --- a/addons/resource.language.en_gb/resources/strings.po
 +++ b/addons/resource.language.en_gb/resources/strings.po
 @@ -7402,10 +7402,7 @@ msgctxt "#13427"
@@ -608,7 +602,7 @@ index d0064af1b9..37b2edf293 100644
  
  #: system/settings/settings.xml
  msgctxt "#13429"
-@@ -19706,11 +19703,7 @@ msgctxt "#36158"
+@@ -19740,11 +19737,7 @@ msgctxt "#36158"
  msgid "Enable DXVA2 hardware decoding of video files."
  msgstr ""
  
@@ -621,11 +615,8 @@ index d0064af1b9..37b2edf293 100644
  
  #. Description of setting with label #13429 "Allow hardware acceleration (VDADecoder)"
  #: system/settings/settings.xml
--- 
-2.45.2
 
-
-From dabbfdce74a77d6918dc2db63acc75115aeee3cc Mon Sep 17 00:00:00 2001
+From cfe3c144ed3aa99477678bab9c02f052051ba83b Mon Sep 17 00:00:00 2001
 From: Stephan Sundermann <stephansundermann@gmail.com>
 Date: Sat, 13 Apr 2024 10:31:36 +0200
 Subject: [PATCH 6/7] [settings] Remove VideoPlayerignoredtsinwav advanced
@@ -637,7 +628,7 @@ Subject: [PATCH 6/7] [settings] Remove VideoPlayerignoredtsinwav advanced
  2 files changed, 3 deletions(-)
 
 diff --git a/xbmc/settings/AdvancedSettings.cpp b/xbmc/settings/AdvancedSettings.cpp
-index c4e8d9fc58..1bfccc0d49 100644
+index c4e8d9fc58b8f..1bfccc0d49df1 100644
 --- a/xbmc/settings/AdvancedSettings.cpp
 +++ b/xbmc/settings/AdvancedSettings.cpp
 @@ -129,7 +129,6 @@ void CAdvancedSettings::Initialize()
@@ -657,7 +648,7 @@ index c4e8d9fc58..1bfccc0d49 100644
      XMLUtils::GetFloat(pElement, "limiterhold", m_limiterHold, 0.0f, 100.0f);
      XMLUtils::GetFloat(pElement, "limiterrelease", m_limiterRelease, 0.001f, 100.0f);
 diff --git a/xbmc/settings/AdvancedSettings.h b/xbmc/settings/AdvancedSettings.h
-index 0f4c5a7871..9a57a7d6c9 100644
+index 0f4c5a7871be4..9a57a7d6c919d 100644
 --- a/xbmc/settings/AdvancedSettings.h
 +++ b/xbmc/settings/AdvancedSettings.h
 @@ -121,7 +121,6 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
@@ -668,11 +659,8 @@ index 0f4c5a7871..9a57a7d6c9 100644
      float m_limiterHold;
      float m_limiterRelease;
  
--- 
-2.45.2
 
-
-From 83d0ef3b4102034723eb71817edaa385c6c0b0fb Mon Sep 17 00:00:00 2001
+From f89f51b8a67623f4882c455cd0f6615618096ebd Mon Sep 17 00:00:00 2001
 From: Stephan Sundermann <stephansundermann@gmail.com>
 Date: Sat, 13 Apr 2024 13:07:58 +0200
 Subject: [PATCH 7/7] [ffmpeg] Use new audio DTS and ATMOS profiles
@@ -683,7 +671,7 @@ Subject: [PATCH 7/7] [ffmpeg] Use new audio DTS and ATMOS profiles
  2 files changed, 17 insertions(+), 12 deletions(-)
 
 diff --git a/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemux.cpp b/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemux.cpp
-index 63fb9264a8..e9aa468dd0 100644
+index 63fb9264a8348..e9aa468dd0bd7 100644
 --- a/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemux.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemux.cpp
 @@ -15,15 +15,15 @@ std::string CDemuxStreamAudio::GetStreamType()
@@ -740,7 +728,7 @@ index 63fb9264a8..e9aa468dd0 100644
      case AV_CODEC_ID_AAC:
      {
 diff --git a/xbmc/cores/VideoPlayer/DVDInputStreams/InputStreamAddon.cpp b/xbmc/cores/VideoPlayer/DVDInputStreams/InputStreamAddon.cpp
-index daf66ce0cd..902f38ade2 100644
+index daf66ce0cd98b..902f38ade2708 100644
 --- a/xbmc/cores/VideoPlayer/DVDInputStreams/InputStreamAddon.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDInputStreams/InputStreamAddon.cpp
 @@ -762,14 +762,11 @@ int CInputStreamAddon::ConvertAudioCodecProfile(STREAMCODEC_PROFILE profile)
@@ -761,6 +749,3 @@ index daf66ce0cd..902f38ade2 100644
      default:
        return FF_PROFILE_UNKNOWN;
    }
--- 
-2.45.2
-
