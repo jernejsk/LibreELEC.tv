@@ -1,31 +1,31 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Claude Sonnet 5 <noreply@anthropic.com>
-Date: Thu, 10 Sep 2026 10:15:00 +0200
-Subject: [PATCH] arm64: dts: allwinner: h6: tanix-tx6-mini: Enable AC200
- codec
+From 7a0971b825b07e28340ca1c1417987c42a7d7553 Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Thu, 10 Sep 2026 11:16:12 +0200
+Subject: [PATCH] arm64: dts: allwinner: h6: tanix-tx6-mini: Enable AC200 codec
 
-The Tanix TX6 mini has the AC200's analog audio codec populated on its
-board, unlike the plain Tanix TX6 which only has the AC200 for its
-Ethernet PHY. Confirmed against jernejsk/linux-1's original 2022
+The Tanix TX6 mini has the AC200's analog audio codec populated on
+its board, unlike the plain Tanix TX6 which only has the AC200 for
+its Ethernet PHY. Confirmed against jernejsk/linux-1's original 2022
 "arm64: dts: allwinner: h6: enable AC200 codec" commit, which enables
 this on tanix-tx6-mini specifically and not on tanix-tx6 - re-derived
 here against the current ac200_codec/ac200_sound DT binding (the 2022
 version predates the simple-audio-card-based ac200_sound machine node
-and used an since-removed &analog node instead).
+and used a since-removed &analog node instead).
 
 i2c3 (the AC200's bus) is already enabled by the shared tanix.dtsi for
 the Ethernet PHY; only i2s3, ac200_codec and ac200_sound need enabling
 here.
 
-Signed-off-by: Claude Sonnet 5 <noreply@anthropic.com>
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
 ---
- .../sun50i-h6-tanix-tx6-mini.dts             | 16 ++++++++++++++++
+ .../dts/allwinner/sun50i-h6-tanix-tx6-mini.dts   | 16 ++++++++++++++++
  1 file changed, 16 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6-tanix-tx6-mini.dts b/arch/arm64/boot/dts/allwinner/sun50i-h6-tanix-tx6-mini.dts
+index 08d84160d88f..a0e8c3b45f25 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-h6-tanix-tx6-mini.dts
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-tanix-tx6-mini.dts
-@@ -9,6 +9,22 @@
+@@ -10,6 +10,22 @@ / {
  	compatible = "oranth,tanix-tx6-mini", "allwinner,sun50i-h6";
  };
  
@@ -48,5 +48,6 @@ diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6-tanix-tx6-mini.dts b/arch/a
  &r_ir {
  	linux,rc-map-name = "rc-tanix-tx3mini";
  };
---
+-- 
 2.43.0
+
