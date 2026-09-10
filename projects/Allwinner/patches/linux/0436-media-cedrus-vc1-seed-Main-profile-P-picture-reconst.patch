@@ -1,0 +1,96 @@
+From 782fde6663601b6c23315e65a7d40149c08dcb78 Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Thu, 10 Sep 2026 08:53:05 +0200
+Subject: [PATCH] media: cedrus: vc1: seed Main profile P picture
+ reconstruction
+
+Port a fix from an earlier WIP iteration of this driver (75dcfad8c5cd)
+that b16ba9a1107c's squash/rewrite had dropped.
+
+The engine does not write every destination macroblock for Main
+profile P pictures (SKIPMB-flagged macroblocks retain the reference
+samples they predict from). Seed the destination with its forward
+reference before running the engine, so those untouched macroblocks
+don't contain stale/uninitialized content.
+
+Unlike a fully skipped picture (PTYPE == SKIPPED, an exact copy of the
+forward reference, entirely unrelated to this fix), a Main-profile P
+picture's destination is a genuine mix of freshly-decoded and
+reference-only macroblocks - there is no way to produce that other
+than by having real pixel data underneath before the engine runs, so
+this one has to be a copy.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+---
+ .../staging/media/sunxi/cedrus/cedrus_dec.c   | 15 +++++++++----
+ .../staging/media/sunxi/cedrus/cedrus_vc1.c   | 21 +++++++++++++++++++
+ 2 files changed, 32 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_dec.c b/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
+index 4386b2c088b5..1b1e6c0e522b 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_dec.c
+@@ -109,7 +109,7 @@ void cedrus_device_run(void *priv)
+ 	cedrus_dst_format_set(dev, &ctx->dst_fmt);
+ 
+ 	error = ctx->current_codec->setup(ctx, &run);
+-	if (error)
++	if (error < 0)
+ 		v4l2_err(&ctx->dev->v4l2_dev,
+ 			 "Failed to setup decoding job: %d\n", error);
+ 
+@@ -118,9 +118,16 @@ void cedrus_device_run(void *priv)
+ 	if (src_req)
+ 		v4l2_ctrl_request_complete(src_req, &ctx->hdl);
+ 
+-	/* Trigger decoding if setup went well, bail out otherwise. */
+-	if (!error) {
+-		/* Start the watchdog timer. */
++	if (error > 0) {
++		/*
++		 * Setup produced the output without the engine (e.g. a skipped
++		 * picture copied from its reference); finish the job directly.
++		 */
++		v4l2_m2m_buf_done_and_job_finish(ctx->dev->m2m_dev,
++						 ctx->fh.m2m_ctx,
++						 VB2_BUF_STATE_DONE);
++	} else if (!error) {
++		/* Setup went well, start the watchdog timer and trigger. */
+ 		schedule_delayed_work(&dev->watchdog_work,
+ 				      msecs_to_jiffies(2000));
+ 
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_vc1.c b/drivers/staging/media/sunxi/cedrus/cedrus_vc1.c
+index 1cda15411741..f9eb8d8f3d75 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_vc1.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_vc1.c
+@@ -310,6 +310,27 @@ static int cedrus_vc1_setup(struct cedrus_ctx *ctx, struct cedrus_run *run)
+ 	else
+ 		bwd_buf = out_buf;
+ 
++	/*
++	 * The engine does not write every destination macroblock for Main
++	 * profile P pictures. Seed the destination with its forward reference
++	 * so untouched macroblocks retain the reference samples they predict
++	 * from.
++	 */
++	if (sequence->profile == VC1_PROFILE_MAIN &&
++	    picture->fcm == VC1_FCM_PROGRESSIVE &&
++	    picture->ptype == VC1_PICTURE_TYPE_P && forward_vb2) {
++		struct vb2_buffer *dst = &run->dst->vb2_buf;
++		unsigned int i;
++
++		for (i = 0; i < dst->num_planes; i++) {
++			void *dvaddr = vb2_plane_vaddr(dst, i);
++			void *svaddr = vb2_plane_vaddr(forward_vb2, i);
++
++			if (dvaddr && svaddr)
++				memcpy(dvaddr, svaddr, vb2_plane_size(dst, i));
++		}
++	}
++
+ 	cedrus_engine_enable(ctx);
+ 
+ 	/*
+-- 
+2.43.0
+
