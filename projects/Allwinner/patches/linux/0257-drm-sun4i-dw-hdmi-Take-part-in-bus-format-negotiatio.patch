@@ -1,0 +1,237 @@
+From 74a501e227bb38081219665eb27f42d53bff3fe4 Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Mon, 20 Jul 2026 08:47:17 +0200
+Subject: [PATCH 257/273] drm/sun4i: dw-hdmi: Take part in bus format
+ negotiation
+
+The dw-hdmi bridge skips bus format negotiation when it is the first
+bridge in the chain and simply defaults to RGB888. In order to support
+other display engine output formats, like YUV 4:2:0 for 4k@60
+resolutions, the display engine constraints must be communicated to
+dw-hdmi.
+
+Add a platform bridge in front of the dw-hdmi bridge which participates
+in the format negotiation. For now it accepts only RGB888, which is
+exactly what dw-hdmi assumed before, so there is no functional change.
+dw-hdmi is now registered via dw_hdmi_probe() and attached as the next
+bridge, still providing the connector as before.
+
+Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+---
+ drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c | 125 +++++++++-----------------
+ drivers/gpu/drm/sun4i/sun8i_dw_hdmi.h |   2 -
+ 2 files changed, 41 insertions(+), 86 deletions(-)
+
+diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
+index 5ed760e5f5a9..33e978710eb3 100644
+--- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
++++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
+@@ -9,14 +9,11 @@
+ #include <linux/platform_device.h>
+ 
+ #include <drm/drm_atomic_state_helper.h>
+-#include <drm/drm_bridge_connector.h>
+-#include <drm/drm_edid.h>
+-#include <drm/drm_managed.h>
+ #include <drm/drm_modeset_helper_vtables.h>
+ #include <drm/drm_of.h>
+ #include <drm/drm_simple_kms_helper.h>
+ 
+-#include <media/cec-notifier.h>
++#include <uapi/linux/media-bus-format.h>
+ 
+ #include "sun8i_dw_hdmi.h"
+ #include "sun8i_tcon_top.h"
+@@ -34,61 +31,34 @@ static int sun8i_hdmi_enc_attach(struct drm_bridge *bridge,
+ 				 &hdmi->bridge, flags);
+ }
+ 
+-static void sun8i_hdmi_enc_detach(struct drm_bridge *bridge)
++static u32 *
++sun8i_hdmi_enc_get_input_bus_fmts(struct drm_bridge *bridge,
++				  struct drm_bridge_state *bridge_state,
++				  struct drm_crtc_state *crtc_state,
++				  struct drm_connector_state *conn_state,
++				  u32 output_fmt,
++				  unsigned int *num_input_fmts)
+ {
+-	struct sun8i_dw_hdmi *hdmi = bridge_to_sun8i_dw_hdmi(bridge);
+-
+-	cec_notifier_conn_unregister(hdmi->cec_notifier);
+-	hdmi->cec_notifier = NULL;
+-}
++	u32 *input_fmt;
+ 
+-static void sun8i_hdmi_enc_hpd_notify(struct drm_bridge *bridge,
+-				      struct drm_connector *connector,
+-				      enum drm_connector_status status)
+-{
+-	struct sun8i_dw_hdmi *hdmi = bridge_to_sun8i_dw_hdmi(bridge);
++	*num_input_fmts = 0;
+ 
+-	if (!hdmi->cec_notifier)
+-		return;
++	if (output_fmt != MEDIA_BUS_FMT_RGB888_1X24)
++		return NULL;
+ 
+-	if (status == connector_status_connected) {
+-		const struct drm_edid *drm_edid;
+-		const struct edid *edid;
++	input_fmt = kmalloc_obj(*input_fmt);
++	if (!input_fmt)
++		return NULL;
+ 
+-		drm_edid = drm_bridge_edid_read(hdmi->next_bridge,
+-						hdmi->connector);
+-		if (drm_edid)
+-			return;
++	*num_input_fmts = 1;
++	*input_fmt = output_fmt;
+ 
+-		edid = drm_edid_raw(drm_edid);
+-		cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier,
+-						     edid);
+-		drm_edid_free(drm_edid);
+-	} else {
+-		cec_notifier_phys_addr_invalidate(hdmi->cec_notifier);
+-	}
+-}
+-
+-static int sun8i_hdmi_enc_atomic_check(struct drm_bridge *bridge,
+-				       struct drm_bridge_state *bridge_state,
+-				       struct drm_crtc_state *crtc_state,
+-				       struct drm_connector_state *conn_state)
+-{
+-	struct drm_connector_state *old_conn_state =
+-		drm_atomic_get_old_connector_state(conn_state->state,
+-						   conn_state->connector);
+-
+-	if (!drm_connector_atomic_hdr_metadata_equal(old_conn_state, conn_state))
+-		crtc_state->mode_changed = true;
+-
+-	return 0;
++	return input_fmt;
+ }
+ 
+ static const struct drm_bridge_funcs sun8i_hdmi_enc_bridge_funcs = {
+ 	.attach = sun8i_hdmi_enc_attach,
+-	.detach = sun8i_hdmi_enc_detach,
+-	.hpd_notify = sun8i_hdmi_enc_hpd_notify,
+-	.atomic_check = sun8i_hdmi_enc_atomic_check,
++	.atomic_get_input_bus_fmts = sun8i_hdmi_enc_get_input_bus_fmts,
+ 	.atomic_duplicate_state = drm_atomic_helper_bridge_duplicate_state,
+ 	.atomic_destroy_state = drm_atomic_helper_bridge_destroy_state,
+ 	.atomic_reset = drm_atomic_helper_bridge_reset,
+@@ -179,8 +149,6 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+ {
+ 	struct platform_device *pdev = to_platform_device(dev);
+ 	struct dw_hdmi_plat_data *plat_data;
+-	struct cec_connector_info conn_info;
+-	struct drm_connector *connector;
+ 	struct drm_device *drm = data;
+ 	struct device_node *phy_node;
+ 	struct drm_encoder *encoder;
+@@ -212,6 +180,10 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+ 	if (IS_ERR(hdmi))
+ 		return PTR_ERR(hdmi);
+ 
++	ret = devm_drm_bridge_add(&pdev->dev, &hdmi->bridge);
++	if (ret)
++		return ret;
++
+ 	plat_data = &hdmi->plat_data;
+ 	hdmi->dev = &pdev->dev;
+ 	encoder = &hdmi->encoder;
+@@ -280,49 +252,35 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+ 		goto err_deinit_phy;
+ 	}
+ 
++	/* dw_hdmi_probe() registered a bridge for our own OF node. */
+ 	hdmi->next_bridge = of_drm_find_bridge(dev->of_node);
+-
+-	hdmi->bridge.type = DRM_MODE_CONNECTOR_HDMIA;
+-	hdmi->bridge.interlace_allowed = true;
+-
+-	drm_bridge_add(&hdmi->bridge);
++	if (!hdmi->next_bridge) {
++		ret = -ENODEV;
++		goto err_remove_dw_hdmi;
++	}
+ 
+ 	drm_encoder_helper_add(encoder, &sun8i_dw_hdmi_encoder_helper_funcs);
+ 	ret = drm_simple_encoder_init(drm, encoder, DRM_MODE_ENCODER_TMDS);
+ 	if (ret)
+-		goto err_deinit_phy;
++		goto err_remove_dw_hdmi;
+ 
+-	ret = drm_bridge_attach(encoder, &hdmi->bridge, NULL,
+-				DRM_BRIDGE_ATTACH_NO_CONNECTOR);
++	/*
++	 * Attach our bridge in front of the dw-hdmi one, so display
++	 * engine constraints participate in bus format negotiation.
++	 * dw-hdmi still creates the connector.
++	 */
++	ret = drm_bridge_attach(encoder, &hdmi->bridge, NULL, 0);
+ 	if (ret)
+-		goto err_deinit_phy;
+-
+-	connector = drm_bridge_connector_init(drm, encoder);
+-	if (IS_ERR(connector)) {
+-		dev_err(dev, "Unable to create HDMI bridge connector\n");
+-		ret = PTR_ERR(connector);
+-		goto err_deinit_phy;
+-	}
+-
+-	hdmi->connector = connector;
+-	drm_connector_attach_encoder(connector, encoder);
+-
+-	if (hdmi->quirks->use_drm_infoframe)
+-		drm_connector_attach_hdr_output_metadata_property(connector);
+-
+-	cec_fill_conn_info_from_drm(&conn_info, connector);
+-
+-	hdmi->cec_notifier = cec_notifier_conn_register(&pdev->dev, NULL,
+-							&conn_info);
+-	if (!hdmi->cec_notifier) {
+-		ret = -ENOMEM;
+-		goto err_deinit_phy;
+-	}
++		goto cleanup_encoder;
+ 
+ 	return 0;
+ 
++cleanup_encoder:
++	drm_encoder_cleanup(encoder);
++err_remove_dw_hdmi:
++	dw_hdmi_remove(hdmi->hdmi);
+ err_deinit_phy:
+-	sun8i_hdmi_phy_deinit(phy);
++	sun8i_hdmi_phy_deinit(hdmi->phy);
+ err_disable_clk_tmds:
+ 	clk_disable_unprepare(hdmi->clk_tmds);
+ err_assert_ctrl_reset:
+@@ -338,7 +296,6 @@ static void sun8i_dw_hdmi_unbind(struct device *dev, struct device *master,
+ {
+ 	struct sun8i_dw_hdmi *hdmi = dev_get_drvdata(dev);
+ 
+-	drm_bridge_remove(&hdmi->bridge);
+ 	dw_hdmi_remove(hdmi->hdmi);
+ 	sun8i_hdmi_phy_deinit(hdmi->phy);
+ 	clk_disable_unprepare(hdmi->clk_tmds);
+diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.h b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.h
+index dbdfafa0c259..8a48a5ac86a0 100644
+--- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.h
++++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.h
+@@ -192,9 +192,7 @@ struct sun8i_dw_hdmi_quirks {
+ };
+ 
+ struct sun8i_dw_hdmi {
+-	struct cec_notifier		*cec_notifier;
+ 	struct clk			*clk_tmds;
+-	struct drm_connector		*connector;
+ 	struct device			*dev;
+ 	struct drm_bridge		bridge;
+ 	struct dw_hdmi			*hdmi;
+-- 
+2.43.0
+
