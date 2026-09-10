@@ -1,0 +1,30 @@
+From 902e822b53d3cba675310210af4211bd2c81e4e2 Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Fri, 31 Jul 2026 06:33:26 +0200
+Subject: [PATCH 117/118] drm/sun4i: dw-hdmi: Drop TCON TOP port reference
+
+When the HDMI controller is fed by TCON TOP, the port node used to
+enumerate the possible CRTCs is never released.
+
+Fixes: 57e23de02f48 ("drm/sun4i: DW HDMI: Expand algorithm for possible crtcs")
+Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+---
+ drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
+index 5e7797a625cd..5ed760e5f5a9 100644
+--- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
++++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
+@@ -162,6 +162,8 @@ static u32 sun8i_dw_hdmi_find_possible_crtcs(struct drm_device *drm,
+ 				of_node_put(remote_port);
+ 			}
+ 		}
++
++		of_node_put(port);
+ 	} else {
+ 		crtcs = drm_of_find_possible_crtcs(drm, node);
+ 	}
+-- 
+2.43.0
+

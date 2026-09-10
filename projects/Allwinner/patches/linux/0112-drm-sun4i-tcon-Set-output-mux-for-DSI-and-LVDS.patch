@@ -1,0 +1,34 @@
+From c8fdc22ae28834a3f96a2a52c998504d4388fb5d Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Thu, 30 Jul 2026 18:40:53 +0200
+Subject: [PATCH 112/118] drm/sun4i: tcon: Set output mux for DSI and LVDS
+
+DSI and LVDS skip output mux setup, so TCON TOP cannot route the selected
+mixer. Configure them like other channel 0 outputs.
+
+Fixes: b9b52d2f4aaf ("drm/sun4i: Add support for D1 TCONs")
+Cc: stable@vger.kernel.org
+Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+---
+ drivers/gpu/drm/sun4i/sun4i_tcon.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/gpu/drm/sun4i/sun4i_tcon.c b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+index 960e83c8291d..ea7c90fef316 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_tcon.c
++++ b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+@@ -717,9 +717,11 @@ void sun4i_tcon_mode_set(struct sun4i_tcon *tcon,
+ 	case DRM_MODE_ENCODER_DSI:
+ 		/* DSI is tied to special case of CPU interface */
+ 		sun4i_tcon0_mode_set_cpu(tcon, encoder, mode);
++		sun4i_tcon_set_mux(tcon, 0, encoder);
+ 		break;
+ 	case DRM_MODE_ENCODER_LVDS:
+ 		sun4i_tcon0_mode_set_lvds(tcon, encoder, mode);
++		sun4i_tcon_set_mux(tcon, 0, encoder);
+ 		break;
+ 	case DRM_MODE_ENCODER_NONE:
+ 		sun4i_tcon0_mode_set_rgb(tcon, encoder, mode);
+-- 
+2.43.0
+

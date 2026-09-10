@@ -1,0 +1,37 @@
+From 5751f6c084078ca84ed843dd0eab0303ddd2cb8f Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Fri, 31 Jul 2026 06:33:15 +0200
+Subject: [PATCH 115/118] drm/sun4i: crtc: Propagate layer initialization error
+
+sun4i_crtc_init() returns plain NULL when layer initialization fails,
+while all its other error paths return an error pointer. The only
+caller, sun4i_tcon_bind(), checks the result with IS_ERR() and happily
+continues with tcon->crtc set to NULL. sun4i_rgb_init() and
+sun4i_lvds_init() then dereference it in drm_crtc_mask(), which
+oopses.
+
+Return the error pointer instead.
+
+Fixes: dcd215801b02 ("drm/sun4i: Drop primary layer pointer from sun4i_drv")
+Cc: stable@vger.kernel.org
+Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+---
+ drivers/gpu/drm/sun4i/sun4i_crtc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/sun4i/sun4i_crtc.c b/drivers/gpu/drm/sun4i/sun4i_crtc.c
+index c2f7f69baf75..3fa1f4fda0f0 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_crtc.c
++++ b/drivers/gpu/drm/sun4i/sun4i_crtc.c
+@@ -208,7 +208,7 @@ struct sun4i_crtc *sun4i_crtc_init(struct drm_device *drm,
+ 	planes = sunxi_engine_layers_init(drm, engine);
+ 	if (IS_ERR(planes)) {
+ 		dev_err(drm->dev, "Couldn't create the planes\n");
+-		return NULL;
++		return ERR_CAST(planes);
+ 	}
+ 
+ 	/* find primary and cursor planes for drm_crtc_init_with_planes */
+-- 
+2.43.0
+

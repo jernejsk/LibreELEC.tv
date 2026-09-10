@@ -1,0 +1,40 @@
+From 65b3dd88626e6b058de0d7b02dd86397ecfe3758 Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Fri, 31 Jul 2026 06:33:08 +0200
+Subject: [PATCH 114/118] drm/sun4i: hdmi: Don't leak sync polarity bits into
+ packet control
+
+sun4i_hdmi_enable() keeps using the same variable after it programmed
+the video timing polarity register with it. The leftover TX_CLK, HSYNC
+and VSYNC bits are then ORed into the packet control register, where
+each nibble selects the packet type sent in one of the eight slots.
+
+As a result, slot 0 selects packet type 3 instead of the AVI infoframe
+whenever the mode has positive HSYNC or VSYNC polarity, and slots 5 and
+6 request packets which were never set up.
+
+Assign the packet types instead of ORing them into the stale value.
+
+Fixes: 9ca6bc246035 ("drm/sun4i: hdmi: Move mode_set into enable")
+Cc: stable@vger.kernel.org
+Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+---
+ drivers/gpu/drm/sun4i/sun4i_hdmi_enc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/sun4i/sun4i_hdmi_enc.c b/drivers/gpu/drm/sun4i/sun4i_hdmi_enc.c
+index 74c7c3720ba8..a27d394d0570 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_hdmi_enc.c
++++ b/drivers/gpu/drm/sun4i/sun4i_hdmi_enc.c
+@@ -161,7 +161,7 @@ static void sun4i_hdmi_enable(struct drm_encoder *encoder,
+ 
+ 	drm_atomic_helper_connector_hdmi_update_infoframes(connector, state);
+ 
+-	val |= SUN4I_HDMI_PKT_CTRL_TYPE(0, SUN4I_HDMI_PKT_AVI);
++	val = SUN4I_HDMI_PKT_CTRL_TYPE(0, SUN4I_HDMI_PKT_AVI);
+ 	val |= SUN4I_HDMI_PKT_CTRL_TYPE(1, SUN4I_HDMI_PKT_END);
+ 	writel(val, hdmi->base + SUN4I_HDMI_PKT_CTRL_REG(0));
+ 
+-- 
+2.43.0
+

@@ -1,0 +1,42 @@
+From a8677357e4b347c223ea393f5d68652ef97602ff Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Fri, 31 Jul 2026 06:33:26 +0200
+Subject: [PATCH 118/118] drm/sun4i: Drop node references while building
+ component list
+
+Two references are leaked every time the display pipeline is walked:
+the output port node in sun4i_drv_traverse_endpoints(), and each node
+taken out of the endpoint fifo in sun4i_drv_probe(). The latter is
+still safe to drop right after processing, since
+drm_of_component_match_add() takes its own reference.
+
+Fixes: 9026e0d122ac ("drm: Add Allwinner A10 Display Engine support")
+Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+---
+ drivers/gpu/drm/sun4i/sun4i_drv.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/gpu/drm/sun4i/sun4i_drv.c b/drivers/gpu/drm/sun4i/sun4i_drv.c
+index 76301b7c9427..63e71ac4d6e2 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_drv.c
++++ b/drivers/gpu/drm/sun4i/sun4i_drv.c
+@@ -290,6 +290,8 @@ static void sun4i_drv_traverse_endpoints(struct endpoint_list *list,
+ 
+ 		kfifo_put(&list->fifo, remote);
+ 	}
++
++	of_node_put(port);
+ }
+ 
+ static int sun4i_drv_add_endpoints(struct device *dev,
+@@ -395,6 +397,7 @@ static int sun4i_drv_probe(struct platform_device *pdev)
+ 		/* process this endpoint */
+ 		ret = sun4i_drv_add_endpoints(&pdev->dev, &list, &match,
+ 					      endpoint);
++		of_node_put(endpoint);
+ 
+ 		/* sun4i_drv_add_endpoints can fail to allocate memory */
+ 		if (ret < 0)
+-- 
+2.43.0
+
