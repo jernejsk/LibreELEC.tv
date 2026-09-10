@@ -1,0 +1,104 @@
+From 00a6723bcff03b884ee10d8daf3f30111babdc40 Mon Sep 17 00:00:00 2001
+From: Claude Sonnet 5 <noreply@anthropic.com>
+Date: Thu, 10 Sep 2026 11:17:04 +0200
+Subject: [PATCH] v4l2_request_vc1: avoid a copy for skipped pictures
+
+A VC-1 skipped picture (PTYPE == SKIPPED) carries no coded
+macroblocks; per spec its reconstructed output is defined to be an
+exact copy of the forward reference. Rather than queuing a V4L2
+request the driver would have to service by producing that copy
+itself (or, worse, one that some drivers may not handle correctly at
+all - see the matching Cedrus kernel-side history), just reuse the
+forward reference's buffer handle directly for such pictures: no V4L2
+request is queued, and no copy happens anywhere, kernel or userspace.
+---
+ libavcodec/v4l2_request_vc1.c | 52 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 52 insertions(+)
+
+diff --git a/libavcodec/v4l2_request_vc1.c b/libavcodec/v4l2_request_vc1.c
+index ce722d7d6563..e4c31149a7aa 100644
+--- a/libavcodec/v4l2_request_vc1.c
++++ b/libavcodec/v4l2_request_vc1.c
+@@ -30,6 +30,14 @@ typedef struct V4L2RequestControlsVC1 {
+     V4L2RequestPictureContext pic;
+     struct v4l2_ctrl_vc1_slice_params slice_params;
+     struct v4l2_ctrl_vc1_bitplanes bitplanes;
++    /*
++     * Set in start_frame() when this picture is a VC-1 skipped picture
++     * (PTYPE == SKIPPED): its reconstructed output is defined by spec to
++     * be an exact copy of the forward reference, so decode_slice() and
++     * end_frame() short-circuit and no V4L2 request is ever queued for
++     * it - see start_frame() for details.
++     */
++    int skipped;
+ } V4L2RequestControlsVC1;
+ 
+ /** Reconstruct bitstream PTYPE (7.1.1.4, index into Table-35) */
+@@ -272,6 +280,44 @@ static int v4l2_request_vc1_start_frame(AVCodecContext *avctx,
+     struct v4l2_vc1_sequence *sequence;
+     struct v4l2_vc1_metadata *metadata;
+ 
++    /*
++     * A skipped picture (PTYPE == SKIPPED) carries no coded macroblocks;
++     * per spec its reconstructed output is an exact copy of the forward
++     * reference. Queuing a request for it would just make the driver
++     * produce that copy internally; instead, reuse the forward
++     * reference's buffer handle directly and skip decoding entirely -
++     * no V4L2 request, no copy anywhere.
++     */
++    controls->skipped = v->p_frame_skipped;
++    if (controls->skipped) {
++        AVFrame *dst = s->cur_pic.ptr->f;
++        const AVFrame *src = s->last_pic.ptr ? s->last_pic.ptr->f : NULL;
++        int i;
++
++        if (!src)
++            return AVERROR_INVALIDDATA;
++
++        for (i = 0; i < AV_NUM_DATA_POINTERS; i++) {
++            av_buffer_unref(&dst->buf[i]);
++            if (src->buf[i]) {
++                dst->buf[i] = av_buffer_ref(src->buf[i]);
++                if (!dst->buf[i])
++                    return AVERROR(ENOMEM);
++            }
++        }
++        memcpy(dst->data, src->data, sizeof(dst->data));
++        memcpy(dst->linesize, src->linesize, sizeof(dst->linesize));
++
++        av_buffer_unref(&dst->hw_frames_ctx);
++        if (src->hw_frames_ctx) {
++            dst->hw_frames_ctx = av_buffer_ref(src->hw_frames_ctx);
++            if (!dst->hw_frames_ctx)
++                return AVERROR(ENOMEM);
++        }
++
++        return 0;
++    }
++
+     ret = ff_v4l2_request_start_frame(avctx, &controls->pic,
+                                        s->cur_pic.ptr->f);
+     if (ret)
+@@ -484,6 +530,9 @@ static int v4l2_request_vc1_decode_slice(AVCodecContext *avctx, const uint8_t *b
+     const MpegEncContext *s = &v->s;
+     V4L2RequestControlsVC1 *controls = s->cur_pic.ptr->hwaccel_picture_private;
+ 
++    if (controls->skipped)
++        return 0;
++
+     /* Current bit buffer is beyond any marker for VC-1, so skip it */
+     if (avctx->codec_id == AV_CODEC_ID_VC1 && size >= 4 &&
+         IS_MARKER(AV_RB32(buffer))) {
+@@ -500,6 +549,9 @@ static int v4l2_request_vc1_end_frame(AVCodecContext *avctx)
+     const MpegEncContext *s = &v->s;
+     V4L2RequestControlsVC1 *controls = s->cur_pic.ptr->hwaccel_picture_private;
+ 
++    if (controls->skipped)
++        return 0;
++
+     struct v4l2_ext_control control[] = {
+         {
+             .id = V4L2_CID_STATELESS_VC1_SLICE_PARAMS,
+-- 
+2.43.0
+

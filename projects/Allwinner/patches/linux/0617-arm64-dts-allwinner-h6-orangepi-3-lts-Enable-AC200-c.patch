@@ -1,0 +1,70 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Claude Sonnet 5 <noreply@anthropic.com>
+Date: Thu, 10 Sep 2026 10:45:00 +0200
+Subject: [PATCH] arm64: dts: allwinner: h6: orangepi-3-lts: Enable AC200
+ codec
+
+The OrangePi 3 LTS has the AC200's analog audio codec populated, same
+as the plain OrangePi 3 it's based on (its reg_aldo2 regulator is even
+still named "vcc33-audio-tv-ephy-mac", carried over unchanged from the
+board it derives from). Unlike the plain OrangePi 3, though, this
+board doesn't use the AC200's Ethernet PHY at all - &emac here is
+wired to a Motorcomm RGMII PHY instead - so &ac200 itself was never
+enabled at all, missing entirely rather than just missing its
+codec/sound children.
+
+ac-ldoin-supply, ephy-vcc-supply, rtc-vcc-supply and tv-vcc-supply are
+all required properties on the AC200 mfd node regardless of which of
+its functions are actually wired up on a given board (see
+Documentation/devicetree/bindings/mfd/x-powers,ac200.yaml), so all
+four still need to be set here even though ephy-vcc/tv-vcc go unused.
+
+Signed-off-by: Claude Sonnet 5 <noreply@anthropic.com>
+---
+ .../sun50i-h6-orangepi-3-lts.dts             | 27 +++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3-lts.dts b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3-lts.dts
+--- a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3-lts.dts
++++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3-lts.dts
+@@ -99,6 +99,25 @@
+ 	};
+ };
+ 
++&ac200 {
++	ac-ldoin-supply = <&reg_aldo2>;
++	ephy-vcc-supply = <&reg_aldo2>;
++	rtc-vcc-supply = <&reg_aldo2>;
++	tv-vcc-supply = <&reg_aldo2>;
++};
++
++&ac200_codec {
++	status = "okay";
++};
++
++&ac200_sound {
++	simple-audio-card,widgets = "Microphone", "Onboard Microphone",
++				    "Line", "Line Out";
++	simple-audio-card,routing = "MIC1", "Onboard Microphone",
++				    "Line Out", "LINEOUT";
++	status = "okay";
++};
++
+ &cpu0 {
+ 	cpu-supply = <&reg_dcdca>;
+ };
+@@ -146,6 +165,14 @@
+ 	};
+ };
+ 
++&i2c3 {
++	status = "okay";
++};
++
++&i2s3 {
++	status = "okay";
++};
++
+ &mdio {
+ 	ext_rgmii_phy: ethernet-phy@1 {
+ 		compatible = "ethernet-phy-ieee802.3-c22";
