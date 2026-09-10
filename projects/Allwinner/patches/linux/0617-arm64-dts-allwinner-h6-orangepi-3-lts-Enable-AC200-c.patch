@@ -1,8 +1,7 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Claude Sonnet 5 <noreply@anthropic.com>
-Date: Thu, 10 Sep 2026 10:45:00 +0200
-Subject: [PATCH] arm64: dts: allwinner: h6: orangepi-3-lts: Enable AC200
- codec
+From 3c9a6bd50f3fdba92a4aaf39fc0fb8f5bb489c6b Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Thu, 10 Sep 2026 11:16:29 +0200
+Subject: [PATCH] arm64: dts: allwinner: h6: orangepi-3-lts: Enable AC200 codec
 
 The OrangePi 3 LTS has the AC200's analog audio codec populated, same
 as the plain OrangePi 3 it's based on (its reg_aldo2 regulator is even
@@ -10,24 +9,24 @@ still named "vcc33-audio-tv-ephy-mac", carried over unchanged from the
 board it derives from). Unlike the plain OrangePi 3, though, this
 board doesn't use the AC200's Ethernet PHY at all - &emac here is
 wired to a Motorcomm RGMII PHY instead - so &ac200 itself was never
-enabled at all, missing entirely rather than just missing its
+enabled at all here, missing entirely rather than just missing its
 codec/sound children.
 
 ac-ldoin-supply, ephy-vcc-supply, rtc-vcc-supply and tv-vcc-supply are
 all required properties on the AC200 mfd node regardless of which of
-its functions are actually wired up on a given board (see
-Documentation/devicetree/bindings/mfd/x-powers,ac200.yaml), so all
-four still need to be set here even though ephy-vcc/tv-vcc go unused.
+its functions are actually wired up on a given board, so all four
+still need to be set even though ephy-vcc/tv-vcc go unused here.
 
-Signed-off-by: Claude Sonnet 5 <noreply@anthropic.com>
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
 ---
- .../sun50i-h6-orangepi-3-lts.dts             | 27 +++++++++++++++++++
+ .../allwinner/sun50i-h6-orangepi-3-lts.dts    | 27 +++++++++++++++++++
  1 file changed, 27 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3-lts.dts b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3-lts.dts
+index c8830d5c2f09..bf95a3a464c5 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3-lts.dts
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3-lts.dts
-@@ -99,6 +99,25 @@
+@@ -99,6 +99,25 @@ wifi_pwrseq: wifi-pwrseq {
  	};
  };
  
@@ -53,7 +52,7 @@ diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3-lts.dts b/arch/a
  &cpu0 {
  	cpu-supply = <&reg_dcdca>;
  };
-@@ -146,6 +165,14 @@
+@@ -146,6 +165,14 @@ hdmi_out_con: endpoint {
  	};
  };
  
@@ -68,3 +67,6 @@ diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6-orangepi-3-lts.dts b/arch/a
  &mdio {
  	ext_rgmii_phy: ethernet-phy@1 {
  		compatible = "ethernet-phy-ieee802.3-c22";
+-- 
+2.43.0
+
