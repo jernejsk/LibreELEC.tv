@@ -7,11 +7,16 @@ PKG_SHA256="d89a5e45c7180170e19be828f9e944a768c593758094fc57a358d0e7c4cb1a49"
 PKG_LICENSE="LGPL-2.1-or-later"
 PKG_SITE="https://git.kernel.org/cgit/network/wireless/iwd.git/about/"
 PKG_URL="https://www.kernel.org/pub/linux/network/wireless/iwd-${PKG_VERSION}.tar.xz"
-PKG_DEPENDS_TARGET="autotools:host gcc:host readline dbus"
+PKG_DEPENDS_TARGET="autotools:host gcc:host readline"
 PKG_LONGDESC="Wireless daemon for Linux"
 PKG_TOOLCHAIN="configure"
 
-PKG_CONFIGURE_OPTS_TARGET="--enable-client \
+PKG_CONFIGURE_OPTS_TARGET="--with-dbus-datadir=/usr/share \
+                           --with-dbus-busdir=/usr/share/dbus-1/system-services \
+                           --with-systemd-unitdir=/usr/lib/systemd/system \
+                           --with-systemd-networkdir=/usr/lib/systemd/network \
+                           --with-systemd-modloaddir=/usr/lib/modules-load.d \
+                           --enable-client \
                            --enable-monitor \
                            --enable-systemd-service \
                            --enable-dbus-policy \
