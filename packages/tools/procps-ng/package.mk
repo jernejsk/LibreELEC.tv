@@ -3,13 +3,13 @@
 
 PKG_NAME="procps-ng"
 PKG_VERSION="4.0.7"
-PKG_SHA256="707d4d43c78b1ff9d0286a4839465e78fa1a82896ec97d3508765b31a808b4b2"
+PKG_SHA256="9d2021f47a4501c667862c9942a92d1953694b21d11bcd1702e83eb594e3d67d"
 PKG_LICENSE="GPL-2.0-or-later AND LGPL-2.1-or-later"
 PKG_SITE="https://gitlab.com/procps-ng/procps"
-PKG_URL="https://gitlab.com/procps-ng/procps/-/archive/v${PKG_VERSION}/procps-v${PKG_VERSION}.tar.bz2"
+PKG_URL="https://downloads.sourceforge.net/project/procps-ng/Production/procps-ng-${PKG_VERSION}.tar.xz"
 PKG_DEPENDS_TARGET="toolchain ncurses"
 PKG_LONGDESC="Command line and full screen utilities for browsing procfs."
-PKG_TOOLCHAIN="autotools"
+PKG_TOOLCHAIN="configure"
 PKG_BUILD_FLAGS="+pic"
 
 PKG_CONFIGURE_OPTS_TARGET="ac_cv_func_malloc_0_nonnull=yes \
