@@ -77,6 +77,13 @@ if [ -z "${LOCAL_CCACHE_DIR}" ]; then
   export LOCAL_CCACHE_DIR="${BUILD}/.ccache-local"
 fi
 
+# Pin ccache to the build tree for every compiler, not just the host ones that
+# set CCACHE_DIR explicitly later. A CCACHE_DIR inherited from the environment
+# otherwise points every build at one shared cache that survives deleting the
+# build tree, which makes "clean" builds silently reuse earlier results and
+# times impossible to compare. Set LOCAL_CCACHE_DIR to opt back into sharing.
+export CCACHE_DIR="${LOCAL_CCACHE_DIR}"
+
 if [[ -z "$PATH" || ( "$PATH" != "$TOOLCHAIN/bin:$TOOLCHAIN/sbin" && "$PATH" = "${PATH#$TOOLCHAIN/bin:$TOOLCHAIN/sbin:}" ) ]]; then
   export PATH="$TOOLCHAIN/bin:$TOOLCHAIN/sbin${PATH:+":$PATH"}"
 fi
