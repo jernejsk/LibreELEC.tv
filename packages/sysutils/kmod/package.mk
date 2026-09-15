@@ -9,7 +9,7 @@ PKG_LICENSE="LGPL-2.1-or-later"
 PKG_SITE="https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git"
 PKG_URL="https://www.kernel.org/pub/linux/utils/kernel/kmod/${PKG_NAME}-${PKG_VERSION}.tar.xz"
 PKG_DEPENDS_HOST="meson:host ninja:host"
-PKG_DEPENDS_TARGET="meson:host gcc:host openssl"
+PKG_DEPENDS_TARGET="meson:host gcc:host"
 PKG_LONGDESC="kmod offers the needed flexibility and fine grained control over insertion, removal, configuration and listing of kernel modules."
 PKG_BUILD_FLAGS="-gold -mold"
 
@@ -19,7 +19,7 @@ PKG_MESON_OPTS_COMMON="-Dbashcompletiondir=no \
                        -Dzstd=disabled \
                        -Dxz=disabled \
                        -Dzlib=disabled \
-                       -Dopenssl=enabled \
+                       -Dopenssl=disabled \
                        -Dtools=true \
                        -Ddebug-messages=false \
                        -Dbuild-tests=false \
