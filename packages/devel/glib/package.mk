@@ -12,14 +12,15 @@ PKG_DEPENDS_HOST="libffi:host pcre2:host Python3:host meson:host ninja:host"
 PKG_DEPENDS_TARGET="meson:host ninja:host gcc:host glib:host libffi pcre2 Python3:host util-linux zlib"
 PKG_LONGDESC="A library which includes support routines for C such as lists, trees, hashes, memory allocation."
 
-PKG_MESON_OPTS_HOST="-Ddefault_library=static \
+PKG_MESON_OPTS_HOST="-Dnls=disabled -Ddefault_library=static \
                      -Dinstalled_tests=false \
                      -Dlibmount=disabled \
                      -Dintrospection=disabled \
                      -Dsysprof=disabled \
                      -Dtests=false"
 
-PKG_MESON_OPTS_TARGET="-Ddefault_library=shared \
+PKG_MESON_OPTS_TARGET="-Dnls=disabled \
+                       -Ddefault_library=shared \
                        -Dinstalled_tests=false \
                        -Dselinux=disabled \
                        -Dxattr=true \

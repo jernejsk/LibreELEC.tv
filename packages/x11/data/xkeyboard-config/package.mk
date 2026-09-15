@@ -18,7 +18,7 @@ configure_package() {
 }
 
 pre_configure_target() {
-  PKG_MESON_OPTS_TARGET="-Dcompat-rules=true"
+  PKG_MESON_OPTS_TARGET="-Dcompat-rules=true -Dnls=false"
 
   if [ "${DISPLAYSERVER}" = "x11" ]; then
     PKG_MESON_OPTS_TARGET+=" -Dxorg-rules-symlinks=true"
