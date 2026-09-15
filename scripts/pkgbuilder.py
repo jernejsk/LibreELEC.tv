@@ -22,6 +22,88 @@ sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
 sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())
 
 # derive from subprocess to utilize wait4() for rusage stats
+_cgroup_dirs = None
+_job_levels = None
+
+def cgroup_dirs():
+    # Every cgroup between ours and the root can impose a limit, and the
+    # tightest one wins, so collect the whole chain once.
+    global _cgroup_dirs
+    if _cgroup_dirs is None:
+        _cgroup_dirs = []
+        try:
+            rel = ""
+            for line in open("/proc/self/cgroup", "r"):
+                field = line.strip().split(":")
+                if len(field) == 3 and field[0] == "0":
+                    rel = field[2].lstrip("/")
+                    break
+            base = "/sys/fs/cgroup"
+            if os.path.exists(os.path.join(base, "memory.max")) or rel:
+                node = os.path.join(base, rel) if rel else base
+                while True:
+                    if os.path.exists(os.path.join(node, "memory.max")):
+                        _cgroup_dirs.append(node)
+                    if os.path.normpath(node) == base or not node.startswith(base):
+                        break
+                    node = os.path.dirname(node)
+            if not _cgroup_dirs and os.path.exists("/sys/fs/cgroup/memory/memory.limit_in_bytes"):
+                _cgroup_dirs.append("/sys/fs/cgroup/memory")
+        except OSError:
+            pass
+    return _cgroup_dirs
+
+def oom_count():
+    # How many OOM kills the kernel has performed, from whichever counter this
+    # system offers. /proc/vmstat exists on every Linux since 4.13 and needs no
+    # cgroup support; the cgroup counters additionally catch the case where
+    # only this build's cgroup hits its limit while the machine is fine.
+    total = 0
+    try:
+        for line in open("/proc/vmstat", "r"):
+            field = line.split()
+            if len(field) == 2 and field[0] == "oom_kill":
+                total += int(field[1])
+    except (OSError, ValueError):
+        pass
+    for node in cgroup_dirs():
+        try:
+            for line in open(os.path.join(node, "memory.events"), "r"):
+                field = line.split()
+                if len(field) == 2 and field[0] == "oom_kill":
+                    total += int(field[1])
+        except (OSError, ValueError):
+            continue
+    return total
+
+def default_make_level():
+    return int(os.environ.get("CONCURRENCY_MAKE_LEVEL", "0")) or multiprocessing.cpu_count()
+
+def job_level_file():
+    # THREAD_CONTROL is wiped at the start of every build, so levels learned the
+    # hard way live beside it and survive until the build tree itself goes.
+    return os.path.join(os.path.dirname(os.environ["THREAD_CONTROL"].rstrip("/")), ".joblevels")
+
+def job_levels():
+    global _job_levels
+    if _job_levels is None:
+        _job_levels = {}
+        try:
+            with open(job_level_file(), "r") as f:
+                for name, level in json.load(f).items():
+                    _job_levels[name] = int(level)
+        except (OSError, ValueError, KeyError):
+            pass
+    return _job_levels
+
+def save_job_level(name, level):
+    job_levels()[name] = level
+    try:
+        with open(job_level_file(), "w") as f:
+            json.dump(_job_levels, f, indent=1, sort_keys=True)
+    except (OSError, KeyError):
+        pass
+
 class RusagePopen(subprocess.Popen):
     def _try_wait(self, wait_flags):
         try:
@@ -315,26 +397,51 @@ class BuildProcess(threading.Thread):
 
         job["start"] = time.time()
         returncode = 1
-        try:
-            if job["logfile"]:
-                with open(job["logfile"], "w") as logfile:
-                    cmd = rusage_run(job["args"], cwd=ROOT,
-                                     stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT,
-                                     universal_newlines=True, shell=False, parent=self, start_new_session=True)
-                returncode = cmd.returncode
-                job["cmdproc"] = cmd
-            else:
-                try:
-                    cmd = rusage_run(job["args"], cwd=ROOT,
-                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                     universal_newlines=True, shell=False, parent=self, start_new_session=True,
-                                     encoding="utf-8", errors="replace")
+
+        # Start at whatever this package needed last time, if anything.
+        level = job_levels().get(job["name"], default_make_level())
+
+        while True:
+            env = dict(os.environ, CONCURRENCY_MAKE_LEVEL=str(level))
+            oom_before = oom_count()
+
+            try:
+                if job["logfile"]:
+                    with open(job["logfile"], "a") as logfile:
+                        cmd = rusage_run(job["args"], cwd=ROOT, env=env,
+                                         stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT,
+                                         universal_newlines=True, shell=False, parent=self, start_new_session=True)
                     returncode = cmd.returncode
                     job["cmdproc"] = cmd
-                except UnicodeDecodeError:
-                    print(f'\nPKGBUILDER ERROR: UnicodeDecodeError while reading cmd.stdout from "{job["task"]} {job["name"]}"\n', file=sys.stderr, flush=True)
-        except Exception as e:
-            print(f"\nPKGBUILDER ERROR: {str(e)} exception while executing: {job['args']}\n", file=sys.stderr, flush=True)
+                else:
+                    try:
+                        cmd = rusage_run(job["args"], cwd=ROOT, env=env,
+                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                         universal_newlines=True, shell=False, parent=self, start_new_session=True,
+                                         encoding="utf-8", errors="replace")
+                        returncode = cmd.returncode
+                        job["cmdproc"] = cmd
+                    except UnicodeDecodeError:
+                        print(f'\nPKGBUILDER ERROR: UnicodeDecodeError while reading cmd.stdout from "{job["task"]} {job["name"]}"\n', file=sys.stderr, flush=True)
+            except Exception as e:
+                print(f"\nPKGBUILDER ERROR: {str(e)} exception while executing: {job['args']}\n", file=sys.stderr, flush=True)
+
+            if returncode == 0 or self.stopping or level <= 1:
+                break
+
+            # Only back off when the kernel actually killed something. A build
+            # error fails now, at full speed, instead of being retried five
+            # times on the way down to -j1.
+            if oom_count() <= oom_before:
+                break
+
+            level = max(1, level // 2)
+            save_job_level(job["name"], level)
+            print(f"\nPKGBUILDER: {job['name']} was hit by the OOM killer, rebuilding at -j{level}\n",
+                  file=sys.stderr, flush=True)
+            # Nothing is cleaned between attempts: the package keeps its build
+            # directory, so make or ninja resumes from the objects it already
+            # produced rather than starting the package again.
 
         job["end"] = time.time()
         job["elapsed"] = job["end"] - job["start"]
@@ -353,7 +460,7 @@ class BuildProcess(threading.Thread):
         return (returncode != 0)
 
 class Builder:
-    def __init__(self, maxthreadcount, inputfilename, jobglog, loadstats, stats_interval, \
+    def __init__(self, maxthreadcount, minfreemem, inputfilename, jobglog, loadstats, stats_interval, \
                  haltonerror=True, failimmediately=True, log_burst=True, log_combine="always", \
                  bookends=True, autoremove=False, colors=False, progress=False, debug=False, verbose=False):
         if inputfilename == "-":
@@ -381,6 +488,10 @@ class Builder:
 
         if args.debug:
             DEBUG(f"THREADCOUNT#: input arg: {maxthreadcount}, computed: {self.threadcount}")
+
+        self.cgroup_dirs = None
+        self.memwaits = 0
+        self.minfreemem = int(minfreemem) * 1024 if minfreemem else 0
 
         self.joblog = jobglog
         self.loadstats = loadstats
@@ -499,6 +610,14 @@ class Builder:
 
         try:
             for i in range(self.generator.activeJobCount(), self.threadcount):
+                # Hold a free slot back while memory is short rather than
+                # starting a package that pushes the build into the OOM killer.
+                # One job always runs, so a low-memory machine still finishes.
+                if self.minfreemem and self.generator.activeJobCount() > 0:
+                    if self.getMemory().get("MemAvailable", 0) < self.minfreemem:
+                        self.memwaits += 1
+                        break
+
                 job = self.generator.getNextJob()
 
                 if self.verbose:
@@ -808,8 +927,72 @@ class Builder:
     def getLoad(self):
         return open("/proc/loadavg", "r").readline().split()
 
+    def getCgroupDirs(self):
+        return cgroup_dirs()
+
+    def getCgroupHeadroom(self):
+        # Bytes still usable before the tightest enclosing cgroup starts
+        # reclaiming or killing. None when no limit applies.
+        headroom = None
+
+        for node in self.getCgroupDirs():
+            try:
+                limit = None
+                for knob in ("memory.max", "memory.high", "memory.limit_in_bytes"):
+                    try:
+                        value = open(os.path.join(node, knob), "r").read().strip()
+                    except OSError:
+                        continue
+                    if value in ("max", ""):
+                        continue
+                    value = int(value)
+                    # v1 reports a huge sentinel rather than "max"
+                    if value >= (1 << 62):
+                        continue
+                    # memory.high throttles below memory.max, so the lower of
+                    # the two is what the build actually gets to use
+                    limit = value if limit is None else min(limit, value)
+
+                if limit is None:
+                    continue
+
+                current = 0
+                for knob in ("memory.current", "memory.usage_in_bytes"):
+                    try:
+                        current = int(open(os.path.join(node, knob), "r").read().strip())
+                        break
+                    except OSError:
+                        continue
+
+                reclaimable = 0
+                try:
+                    for line in open(os.path.join(node, "memory.stat"), "r"):
+                        field = line.split()
+                        if len(field) == 2 and field[0] in ("inactive_file", "slab_reclaimable"):
+                            reclaimable += int(field[1])
+                except OSError:
+                    pass
+
+                free = max(0, limit - current + reclaimable)
+                headroom = free if headroom is None else min(headroom, free)
+            except (OSError, ValueError):
+                continue
+
+        return headroom
+
     def getMemory(self):
-        return dict((i.split()[0].rstrip(':'),int(i.split()[1])) for i in open("/proc/meminfo", "r").readlines())
+        meminfo = dict((i.split()[0].rstrip(':'),int(i.split()[1])) for i in open("/proc/meminfo", "r").readlines())
+
+        # /proc/meminfo describes the host. A cgroup limit can be lower than
+        # physical memory (a container) or higher than it (a limit larger than
+        # the machine), so the smaller of the two is what this build can use:
+        # neither number is right on its own.
+        headroom = self.getCgroupHeadroom()
+        if headroom is not None:
+            headroom //= 1024
+            meminfo["MemAvailable"] = min(meminfo.get("MemAvailable", headroom), headroom)
+
+        return meminfo
 
     def getTerminalSize(self, signum = None, frame = None):
         h, w, hp, wp = struct.unpack('HHHH',
@@ -833,6 +1016,12 @@ parser = argparse.ArgumentParser(description="Run processes to build the specifi
 parser.add_argument("--max-procs", required=False, default="100%", \
                     help="Maximum number of processes to use. 0 is unlimited. Can be expressed as " \
                          "a percentage, for example 50%% (of $(nproc)). Default is 100%%.")
+
+parser.add_argument("--min-free-mem", metavar="MB", type=int, default=0, \
+                    help="Do not start an additional package while less than MB megabytes of " \
+                         "memory is available, so a parallel build throttles itself instead of " \
+                         "being sized for the worst case. Respects a cgroup limit when one is " \
+                         "lower than physical RAM. 0 disables. Default is 0.")
 
 parser.add_argument("--plan", metavar="FILE", default="-", \
                     help="JSON formatted plan to be processed (default is to read from stdin).")
@@ -910,7 +1099,7 @@ with open(f"{THREAD_CONTROL}/parallel.pid", "w") as pid:
     print(f"{os.getpid()}", file=pid)
 
 try:
-    builder = Builder(args.max_procs, args.plan, args.joblog, args.loadstats, args.stats_interval, \
+    builder = Builder(args.max_procs, args.min_free_mem, args.plan, args.joblog, args.loadstats, args.stats_interval, \
                       haltonerror=args.halt_on_error, failimmediately=args.fail_immediately, \
                       log_burst=args.log_burst, log_combine=args.log_combine, bookends=args.with_bookends, \
                       autoremove=args.auto_remove, colors=args.colors, progress=args.progress, \

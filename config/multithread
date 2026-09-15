@@ -59,7 +59,7 @@ start_multithread_build() {
         --plan "${THREAD_CONTROL}"/plan.json \
         --joblog "${THREAD_CONTROL}"/joblog \
         --loadstats "${THREAD_CONTROL}"/loadstats \
-        --max-procs ${THREADCOUNT} ${buildopts} || result=1
+        --max-procs ${THREADCOUNT} --min-free-mem ${MIN_FREE_MEM:-0} ${buildopts} || result=1
 
     [ ${result} -eq 0 -a -f "${THREAD_CONTROL}"/history ] && echo && cat "${THREAD_CONTROL}"/history | ${ROOT}/tools/mtstats.py
 

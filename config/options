@@ -86,6 +86,11 @@ VERBOSE="${VERBOSE:-yes}"
 #  Try values between 1 and number of processor cores present.
 #  default: use all cores
 [ -z "${CONCURRENCY_MAKE_LEVEL}" ] && export CONCURRENCY_MAKE_LEVEL=$(nproc)
+
+# Megabytes of memory that must stay available before the builder starts an
+# additional package. Sized so one more compiler process cannot push a build
+# into the OOM killer; 0 disables the check.
+[ -z "${MIN_FREE_MEM}" ] && export MIN_FREE_MEM=1024
 [ -z "${CONCURRENCY_LOAD}" ] && export CONCURRENCY_LOAD=$(python3 -c "import os; print(f'{os.cpu_count() * 1.5:.2f}')")
 
 # cache size for ccache
