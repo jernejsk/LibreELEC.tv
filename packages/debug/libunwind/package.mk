@@ -3,14 +3,14 @@
 
 PKG_NAME="libunwind"
 PKG_VERSION="1.8.3"
-PKG_SHA256="21b26bc75cd37b548d7952f2794cde711efa6c6151c4147cc3c52cfedbf11df4"
+PKG_SHA256="be30d910e67f58d82e753231f1357f326a1a088acf126b21ff77e60aab19b90b"
 PKG_LICENSE="MIT"
 PKG_SITE="https://www.nongnu.org/libunwind/"
-PKG_URL="https://github.com/libunwind/libunwind/archive/refs/tags/v${PKG_VERSION}.tar.gz"
+PKG_URL="https://github.com/libunwind/libunwind/releases/download/v${PKG_VERSION}/libunwind-${PKG_VERSION}.tar.gz"
 PKG_DEPENDS_TARGET="autotools:host gcc:host zlib"
 PKG_LONGDESC="library to determine the call-chain of a program"
 PKG_BUILD_FLAGS="+pic"
-PKG_TOOLCHAIN="autotools"
+PKG_TOOLCHAIN="configure"
 
 PKG_CONFIGURE_OPTS_TARGET="--enable-static \
                            --disable-shared \
