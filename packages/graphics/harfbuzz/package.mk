@@ -8,15 +8,20 @@ PKG_SHA256="2357ed966c6ced7bfa720b0640c0231065af01158fbea215093ffa15aed44371"
 PKG_LICENSE="MIT"
 PKG_SITE="http://www.freedesktop.org/wiki/Software/HarfBuzz"
 PKG_URL="https://github.com/harfbuzz/harfbuzz/releases/download/${PKG_VERSION}/harfbuzz-${PKG_VERSION}.tar.xz"
-PKG_DEPENDS_TARGET="toolchain cairo freetype glib"
+PKG_DEPENDS_TARGET="toolchain freetype"
 PKG_LONGDESC="HarfBuzz is an OpenType text shaping engine."
 
 PKG_MESON_OPTS_TARGET="-Dbenchmark=disabled \
-                       -Dcairo=enabled \
+                       -Dcairo=disabled \
                        -Ddocs=disabled \
                        -Dfreetype=enabled \
-                       -Dglib=enabled \
+                       -Dglib=disabled \
                        -Dgobject=disabled \
+                       -Dgpu=disabled \
                        -Dgraphite=disabled \
                        -Dicu=disabled \
-                       -Dtests=disabled"
+                       -Draster=disabled \
+                       -Dsubset=disabled \
+                       -Dtests=disabled \
+                       -Dutilities=disabled \
+                       -Dvector=disabled"
