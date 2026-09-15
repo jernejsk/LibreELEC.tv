@@ -42,6 +42,7 @@ start_multithread_build() {
   [ "${MTIMMEDIATE}" = "no" ] && buildopts+=" --fail-after-active" || buildopts+=" --fail-immediately"
 
   buildopts+=" --stats-interval ${MTINTERVAL:-60}"
+  [ "${MTJOBSERVER}" != "no" ] && buildopts+=" --jobserver"
 
   # pipefail: return value of a pipeline is the value of the last (rightmost) command to exit with a non-zero status
   set -o pipefail

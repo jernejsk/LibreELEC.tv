@@ -104,6 +104,35 @@ def save_job_level(name, level):
     except (OSError, KeyError):
         pass
 
+class JobServer:
+    """One GNU make jobserver for the whole build.
+
+    Every make and ninja started under pkgbuilder draws its job slots from
+    this pool instead of assuming it has -jN of its own. That bounds the
+    number of compilers running at once by the size of the pool rather than
+    by THREADCOUNT * CONCURRENCY_MAKE_LEVEL, and does so exactly and at once,
+    where the load-average limit reacts a minute late and then stalls every
+    build at the same time. The path is passed to jobs as LE_JOBSERVER and
+    turned into MAKEFLAGS by setup_toolchain().
+    """
+    def __init__(self, path, slots):
+        self.path = path
+        if os.path.exists(path):
+            os.unlink(path)
+        os.mkfifo(path, 0o600)
+        # Hold our own read/write end so the tokens outlive any single client.
+        self.fd = os.open(path, os.O_RDWR)
+        os.write(self.fd, b"+" * slots)
+
+    def close(self):
+        if self.fd is not None:
+            os.close(self.fd)
+            self.fd = None
+        try:
+            os.unlink(self.path)
+        except FileNotFoundError:
+            pass
+
 class RusagePopen(subprocess.Popen):
     def _try_wait(self, wait_flags):
         try:
@@ -403,6 +432,10 @@ class BuildProcess(threading.Thread):
 
         while True:
             env = dict(os.environ, CONCURRENCY_MAKE_LEVEL=str(level))
+            if level < default_make_level():
+                # A package that has been OOM-killed is rebuilt with a -j of its
+                # own that we can keep halving, not from the shared pool.
+                env.pop("LE_JOBSERVER", None)
             oom_before = oom_count()
 
             try:
@@ -460,7 +493,7 @@ class BuildProcess(threading.Thread):
         return (returncode != 0)
 
 class Builder:
-    def __init__(self, maxthreadcount, minfreemem, inputfilename, jobglog, loadstats, stats_interval, \
+    def __init__(self, maxthreadcount, minfreemem, jobserver, inputfilename, jobglog, loadstats, stats_interval, \
                  haltonerror=True, failimmediately=True, log_burst=True, log_combine="always", \
                  bookends=True, autoremove=False, colors=False, progress=False, debug=False, verbose=False):
         if inputfilename == "-":
@@ -492,6 +525,11 @@ class Builder:
         self.cgroup_dirs = None
         self.memwaits = 0
         self.minfreemem = int(minfreemem) * 1024 if minfreemem else 0
+
+        self.jobserver = None
+        if jobserver:
+            self.jobserver = JobServer(f"{THREAD_CONTROL}/jobserver", default_make_level())
+            os.environ["LE_JOBSERVER"] = self.jobserver.path
 
         self.joblog = jobglog
         self.loadstats = loadstats
@@ -889,6 +927,8 @@ class Builder:
     def cleanup(self):
         self.clearProgress()
         self.flush()
+        if self.jobserver:
+            self.jobserver.close()
         if self.original_resize_handler != None:
             signal.signal(signal.SIGWINCH, self.original_resize_handler)
         self.stopProcesses()
@@ -1023,6 +1063,10 @@ parser.add_argument("--min-free-mem", metavar="MB", type=int, default=0, \
                          "being sized for the worst case. Respects a cgroup limit when one is " \
                          "lower than physical RAM. 0 disables. Default is 0.")
 
+parser.add_argument("--jobserver", action="store_true", default=False, \
+                    help="Share one pool of CONCURRENCY_MAKE_LEVEL job slots between all make and ninja processes " \
+                         "instead of giving each package -jCONCURRENCY_MAKE_LEVEL. Default is not to.")
+
 parser.add_argument("--plan", metavar="FILE", default="-", \
                     help="JSON formatted plan to be processed (default is to read from stdin).")
 
@@ -1099,7 +1143,7 @@ with open(f"{THREAD_CONTROL}/parallel.pid", "w") as pid:
     print(f"{os.getpid()}", file=pid)
 
 try:
-    builder = Builder(args.max_procs, args.min_free_mem, args.plan, args.joblog, args.loadstats, args.stats_interval, \
+    builder = Builder(args.max_procs, args.min_free_mem, args.jobserver, args.plan, args.joblog, args.loadstats, args.stats_interval, \
                       haltonerror=args.halt_on_error, failimmediately=args.fail_immediately, \
                       log_burst=args.log_burst, log_combine=args.log_combine, bookends=args.with_bookends, \
                       autoremove=args.auto_remove, colors=args.colors, progress=args.progress, \

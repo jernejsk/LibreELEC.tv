@@ -368,8 +368,17 @@ setup_toolchain() {
 
   # parallel
   if flag_enabled "parallel" "yes"; then
-    NINJA_OPTS="-j$CONCURRENCY_MAKE_LEVEL"
-    MAKEFLAGS="-j$CONCURRENCY_MAKE_LEVEL"
+    if [ -n "${LE_JOBSERVER}" -a -x "${TOOLCHAIN}/bin/make" ]; then
+      # pkgbuilder owns one pool of job slots for the whole build; make joins
+      # it as a client and ninja picks the same pool up from MAKEFLAGS. Only
+      # make 4.4 and later speak fifo jobservers, so wait for make:host rather
+      # than trust whatever make the build machine has
+      NINJA_OPTS=""
+      MAKEFLAGS="-j --jobserver-auth=fifo:${LE_JOBSERVER}"
+    else
+      NINJA_OPTS="-j$CONCURRENCY_MAKE_LEVEL"
+      MAKEFLAGS="-j$CONCURRENCY_MAKE_LEVEL"
+    fi
   else
     NINJA_OPTS="-j1"
     MAKEFLAGS="-j1"
@@ -387,8 +396,8 @@ setup_toolchain() {
     TARGET_CXXFLAGS+=" -DNDEBUG"
   fi
 
-  # average load limit
-  if [ "${CONCURRENCY_LOAD}" != "0" ]; then
+  # average load limit - the jobserver bounds the job count directly
+  if [ "${CONCURRENCY_LOAD}" != "0" -a -z "${LE_JOBSERVER}" ]; then
     NINJA_OPTS+=" -l${CONCURRENCY_LOAD}"
     MAKEFLAGS+=" -l${CONCURRENCY_LOAD}"
   fi
