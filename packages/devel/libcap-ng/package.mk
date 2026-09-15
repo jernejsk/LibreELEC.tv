@@ -12,4 +12,13 @@ PKG_LONGDESC="Libcap-ng is a library for Linux that makes using posix capabiliti
 PKG_TOOLCHAIN="autotools"
 PKG_BUILD_FLAGS="-cfg-libs"
 
-PKG_CONFIGURE_OPTS_TARGET="--enable-static --disable-shared --with-python3=no"
+# configure probes for bluetooth/bluetooth.h with no option to say no, so
+# whether the netcap-advanced util is built depends on whether bluez happens to
+# have reached the sysroot first. Serial builds got away with it; with several
+# packages in flight libcap-ng can configure with the header present and then
+# compile without it, failing on a util that is not shipped anyway. Pin the
+# answer instead of declaring a dependency on bluez, which would drag
+# libcap-ng behind bluez, systemd, dbus and glib for no gain.
+PKG_CONFIGURE_OPTS_TARGET="--enable-static --disable-shared --with-python3=no \
+                           ac_cv_header_bluetooth_bluetooth_h=no \
+                           ac_cv_header_bluetooth_hci_h=no"
