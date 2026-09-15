@@ -7,7 +7,7 @@ PKG_VERSION=""
 PKG_LICENSE=""
 PKG_SITE="https://libreelec.tv"
 PKG_URL=""
-PKG_DEPENDS_TARGET="toolchain connman netbase ethtool openssh iw wireless-regdb nss ipset"
+PKG_DEPENDS_TARGET="toolchain connman iwd netbase ethtool openssh iw wireless-regdb nss ipset"
 PKG_SECTION="virtual"
 PKG_LONGDESC="Metapackage for various packages to install network support"
 

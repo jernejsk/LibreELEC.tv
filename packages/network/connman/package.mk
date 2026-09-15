@@ -8,7 +8,7 @@ PKG_SHA256="e0f879af3dfe6c1e4ec1cc31d71af34ee01ed87892be6c596ee42990a17bac53"
 PKG_LICENSE="GPL-2.0-or-later"
 PKG_SITE="http://www.connman.net"
 PKG_URL="https://git.kernel.org/pub/scm/network/connman/connman.git/snapshot/connman-${PKG_VERSION}.tar.gz"
-PKG_DEPENDS_TARGET="autotools:host gcc:host dbus glib iptables iwd nftables readline"
+PKG_DEPENDS_TARGET="autotools:host gcc:host dbus glib iptables nftables readline"
 PKG_LONGDESC="A modular network connection manager."
 PKG_TOOLCHAIN="autotools"
 
