@@ -10,7 +10,7 @@ PKG_SITE="https://www.alsa-project.org/"
 PKG_URL="https://www.alsa-project.org/files/pub/lib/alsa-lib-${PKG_VERSION}.tar.bz2"
 PKG_DEPENDS_TARGET="toolchain"
 PKG_LONGDESC="ALSA (Advanced Linux Sound Architecture) is the next generation Linux Sound API."
-PKG_TOOLCHAIN="autotools"
+PKG_TOOLCHAIN="configure"
 PKG_BUILD_FLAGS="+pic"
 
 if build_with_debug; then

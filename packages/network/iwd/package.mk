@@ -9,7 +9,7 @@ PKG_SITE="https://git.kernel.org/cgit/network/wireless/iwd.git/about/"
 PKG_URL="https://www.kernel.org/pub/linux/network/wireless/iwd-${PKG_VERSION}.tar.xz"
 PKG_DEPENDS_TARGET="autotools:host gcc:host readline dbus"
 PKG_LONGDESC="Wireless daemon for Linux"
-PKG_TOOLCHAIN="autotools"
+PKG_TOOLCHAIN="configure"
 
 PKG_CONFIGURE_OPTS_TARGET="--enable-client \
                            --enable-monitor \

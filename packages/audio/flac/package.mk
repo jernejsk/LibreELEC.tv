@@ -10,7 +10,7 @@ PKG_SITE="https://xiph.org/flac/"
 PKG_URL="https://downloads.xiph.org/releases/flac/${PKG_NAME}-${PKG_VERSION}.tar.xz"
 PKG_DEPENDS_TARGET="toolchain libogg"
 PKG_LONGDESC="An Free Lossless Audio Codec."
-PKG_TOOLCHAIN="autotools"
+PKG_TOOLCHAIN="configure"
 # flac-1.3.1 dont build with LTO support
 PKG_BUILD_FLAGS="+pic -cfg-libs"
 

@@ -11,7 +11,7 @@ PKG_URL="https://ftp.gnu.org/gnu/nettle/nettle-${PKG_VERSION}.tar.gz"
 PKG_DEPENDS_HOST="autotools:host gmp:host"
 PKG_DEPENDS_TARGET="autotools:host gcc:host gmp"
 PKG_LONGDESC="A low-level cryptographic library."
-PKG_TOOLCHAIN="autotools"
+PKG_TOOLCHAIN="configure"
 
 PKG_CONFIGURE_OPTS_COMMON="--disable-documentation \
                            --disable-openssl"

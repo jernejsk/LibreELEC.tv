@@ -11,7 +11,7 @@ PKG_URL="https://github.com/libimobiledevice/libplist/releases/download/${PKG_VE
 PKG_DEPENDS_HOST="toolchain:host"
 PKG_DEPENDS_TARGET="toolchain glib"
 PKG_LONGDESC="libplist is a library for manipulating Apple Binary and XML Property Lists"
-PKG_TOOLCHAIN="autotools"
+PKG_TOOLCHAIN="configure"
 
 PKG_CONFIGURE_OPTS_TARGET="--without-cython"
 

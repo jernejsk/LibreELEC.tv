@@ -10,7 +10,7 @@ PKG_SITE="https://www.netfilter.org/"
 PKG_URL="https://www.netfilter.org/projects/iptables/files/${PKG_NAME}-${PKG_VERSION}.tar.xz"
 PKG_DEPENDS_TARGET="autotools:host gcc:host linux:host libmnl libnftnl"
 PKG_LONGDESC="IP packet filter administration."
-PKG_TOOLCHAIN="autotools"
+PKG_TOOLCHAIN="configure"
 
 PKG_CONFIGURE_OPTS_TARGET+=" --enable-nftables"
 
