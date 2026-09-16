@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (C) 2019-present Team LibreELEC (https://libreelec.tv)
 
+import errno
 import sys
 import os
 import datetime, time
@@ -117,10 +118,27 @@ class RusagePopen(subprocess.Popen):
             self.rusage = ru
         return (pid, sts)
 
-def rusage_run(*popenargs, parent=None, timeout=None, **kwargs):
+def set_autogroup_nice(pid, nice):
+    """With kernel autogroups on, CPU is shared between sessions and a plain
+    nice only ranks processes inside one; the session's own weight is set
+    through /proc/<pid>/autogroup. Unprivileged writes are rate limited by
+    the kernel, so wait out EAGAIN; anything else means no autogroups."""
+    for _ in range(50):
+        try:
+            with open(f"/proc/{pid}/autogroup", "w") as f:
+                f.write(f"{nice}\n")
+            return
+        except OSError as e:
+            if e.errno != errno.EAGAIN:
+                return
+            time.sleep(0.1)
+
+def rusage_run(*popenargs, parent=None, timeout=None, on_start=None, **kwargs):
     with RusagePopen(*popenargs, **kwargs) as process:
         try:
             parent.child = process
+            if on_start:
+                on_start(process.pid)
             stdout, stderr = process.communicate(None, timeout=timeout)
         except subprocess.TimeoutExpired as exc:
             process.kill()
@@ -152,6 +170,20 @@ class Generator:
         self.removedPackages = {}
 
         self.check_no_deps = True
+
+        # How many packages long is the longest chain that cannot start until
+        # this one is done? The plan is in dependency order, so walking it
+        # backwards sees every dependent before the package it depends on.
+        # Nothing here needs to know how long any package takes to build:
+        # the shape of what is still waiting is enough to say which of the
+        # jobs running right now is worth finishing first.
+        dependents = {}
+        for job in self.work:
+            for dep in job["wants"]:
+                dependents.setdefault(dep, []).append(job["name"])
+        self.height = {}
+        for job in reversed(self.work):
+            self.height[job["name"]] = 1 + max((self.height[d] for d in dependents.get(job["name"], [])), default=0)
 
         # Transform unpack info from package:target to just package - simplifying refcount generation
         # Create a map for sections, as we don't autoremove "virtual" packages
@@ -254,19 +286,34 @@ class Generator:
 
             self.check_no_deps = False
 
-        # Process remaining jobs, trying to schedule
-        # only those jobs with all their dependencies satisfied
+        # Process remaining jobs, trying to schedule only those jobs with all
+        # their dependencies satisfied - the one heading the longest chain first.
+        best = None
         for i, job in enumerate(self.work):
-            if self.canBuildJob(job):
-                self.building[job["name"]] = True
-                del self.work[i]
-                job["failedjobs"] = self.getAllFailedJobs(job)
-                job["logfile"] = None
-                job["cmdproc"] = None
-                job["failed"] = False
-                return job
+            if self.canBuildJob(job) and (best is None or self.height[job["name"]] > self.height[self.work[best]["name"]]):
+                best = i
+
+        if best is not None:
+            job = self.work[best]
+            self.building[job["name"]] = True
+            del self.work[best]
+            job["failedjobs"] = self.getAllFailedJobs(job)
+            job["logfile"] = None
+            job["cmdproc"] = None
+            job["failed"] = False
+            return job
 
         raise GeneratorStalled
+
+    # Scheduling niceness for a job about to start: 0 for the head of the
+    # longest chain still unfinished, up to 19 for a job nothing waits on.
+    # Compared against what is still to build rather than the whole plan, so
+    # a short tail like samba -> kodi is the top priority once everything
+    # longer has gone, which is exactly when it becomes the critical path.
+    def niceFor(self, job):
+        remaining = max(self.height[j["name"]] for j in self.work) if self.work else 0
+        remaining = max(remaining, max((self.height[n] for n in self.building), default=0))
+        return round(19 * (1 - self.height[job["name"]] / remaining)) if remaining else 0
 
     # Return details about stalled jobs that can't build until the
     # currently building jobs are complete.
@@ -398,24 +445,36 @@ class BuildProcess(threading.Thread):
         job["start"] = time.time()
         returncode = 1
 
+        # Everything the job runs inherits its niceness; the session weight
+        # is set once the process exists. The head of the longest chain also
+        # builds without a load-average limit - that limit exists to keep the
+        # rest of the build from overrunning the machine, not to hold back the
+        # one job everything else is waiting on.
+        nice = job.get("nice", 0)
+        if nice:
+            job["args"] = ["nice", "-n", str(nice)] + job["args"]
+        on_start = (lambda pid: set_autogroup_nice(pid, nice)) if nice else None
+
         # Start at whatever this package needed last time, if anything.
         level = job_levels().get(job["name"], default_make_level())
 
         while True:
             env = dict(os.environ, CONCURRENCY_MAKE_LEVEL=str(level))
+            if nice == 0:
+                env["CONCURRENCY_LOAD"] = "0"
             oom_before = oom_count()
 
             try:
                 if job["logfile"]:
                     with open(job["logfile"], "a") as logfile:
-                        cmd = rusage_run(job["args"], cwd=ROOT, env=env,
+                        cmd = rusage_run(job["args"], cwd=ROOT, env=env, on_start=on_start,
                                          stdin=subprocess.PIPE, stdout=logfile, stderr=subprocess.STDOUT,
                                          universal_newlines=True, shell=False, parent=self, start_new_session=True)
                     returncode = cmd.returncode
                     job["cmdproc"] = cmd
                 else:
                     try:
-                        cmd = rusage_run(job["args"], cwd=ROOT, env=env,
+                        cmd = rusage_run(job["args"], cwd=ROOT, env=env, on_start=on_start,
                                          stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                          universal_newlines=True, shell=False, parent=self, start_new_session=True,
                                          encoding="utf-8", errors="replace")
@@ -619,6 +678,9 @@ class Builder:
                         break
 
                 job = self.generator.getNextJob()
+                job["nice"] = self.generator.niceFor(job)
+                with open(f"{THREAD_CONTROL}/priorities", "a") as f:
+                    print(f"{time.time():.3f} {job['name']} height={self.generator.height[job['name']]} nice={job['nice']}", file=f)
 
                 if self.verbose:
                     self.show_status("INIT", "submit", job["name"])
