@@ -26,9 +26,9 @@ untested on hardware and no board enables it yet.
  arch/arm64/boot/dts/allwinner/sun50i-h5.dtsi | 22 +++++
  drivers/clk/sunxi-ng/ccu-sun8i-h3.c          | 14 ++-
  drivers/gpu/drm/sun4i/sun4i_tv.c             | 35 +++++++-
- drivers/gpu/drm/sun4i/sun8i_mixer.c          | 56 +++++++++++-
+ drivers/gpu/drm/sun4i/sun8i_mixer.c          | 63 ++++++++++++-
  drivers/gpu/drm/sun4i/sun8i_mixer.h          |  6 +-
- 7 files changed, 238 insertions(+), 12 deletions(-)
+ 7 files changed, 245 insertions(+), 12 deletions(-)
 
 diff --git a/arch/arm/boot/dts/allwinner/sun8i-h3.dtsi b/arch/arm/boot/dts/allwinner/sun8i-h3.dtsi
 index b9fd755946eb..7803e99bdc63 100644
@@ -368,7 +368,7 @@ index 814b77f278f6..3bb98d74e537 100644
  };
  MODULE_DEVICE_TABLE(of, sun4i_tv_of_table);
 diff --git a/drivers/gpu/drm/sun4i/sun8i_mixer.c b/drivers/gpu/drm/sun4i/sun8i_mixer.c
-index 5b5a34e63410..8bfba9a89e09 100644
+index 5b5a34e63410..9a6b6c07c975 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_mixer.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_mixer.c
 @@ -71,6 +71,12 @@ static const struct reg_region sun8i_de2_blender_regions[] = {
@@ -384,25 +384,32 @@ index 5b5a34e63410..8bfba9a89e09 100644
  static const struct de2_fmt_info de2_formats[] = {
  	{
  		.drm_fmt = DRM_FORMAT_AYUV,
-@@ -504,11 +510,30 @@ static bool sun8i_mixer_format_valid(struct sunxi_engine *engine, u32 format)
+@@ -504,11 +510,37 @@ static bool sun8i_mixer_format_valid(struct sunxi_engine *engine, u32 format)
  	return format == MEDIA_BUS_FMT_RGB888_1X24;
  }
  
 +static void sun8i_mixer_apply_color_correction(struct sunxi_engine *engine)
 +{
++	struct sun8i_mixer *mixer = engine_to_sun8i_mixer(engine);
++	int i;
++
 +	DRM_DEBUG_DRIVER("Applying RGB to YUV color correction\n");
 +
-+	regmap_bulk_write(engine->regs, SUN8I_MIXER_DCSC_COEF_REG(0),
-+			  sun8i_rgb2yuv_coef, 12);
-+	regmap_write(engine->regs, SUN8I_MIXER_DCSC_EN, 1);
++	/* DCSC is not covered by the register shadows, write it directly. */
++	for (i = 0; i < ARRAY_SIZE(sun8i_rgb2yuv_coef); i++)
++		writel(sun8i_rgb2yuv_coef[i],
++		       mixer->base + SUN8I_MIXER_DCSC_COEF_REG(i));
++	writel(1, mixer->base + SUN8I_MIXER_DCSC_EN);
 +}
 +
 +static void sun8i_mixer_disable_color_correction(struct sunxi_engine *engine)
 +{
++	struct sun8i_mixer *mixer = engine_to_sun8i_mixer(engine);
++
 +	DRM_DEBUG_DRIVER("Disabling color correction\n");
 +
 +	/* Disable color correction */
-+	regmap_write(engine->regs, SUN8I_MIXER_DCSC_EN, 0);
++	writel(0, mixer->base + SUN8I_MIXER_DCSC_EN);
 +}
 +
  static const struct sunxi_engine_ops sun8i_engine_ops = {
@@ -419,7 +426,7 @@ index 5b5a34e63410..8bfba9a89e09 100644
  };
  
  static void sun8i_mixer_sync(struct sunxi_engine *engine)
-@@ -967,6 +992,25 @@ static const struct sun8i_mixer_cfg sun8i_h3_mixer0_cfg = {
+@@ -967,6 +999,25 @@ static const struct sun8i_mixer_cfg sun8i_h3_mixer0_cfg = {
  	.vi_num		= 1,
  };
  
@@ -445,7 +452,7 @@ index 5b5a34e63410..8bfba9a89e09 100644
  static const struct sun8i_mixer_cfg sun8i_r40_mixer0_cfg = {
  	.lay_cfg = {
  		.ccsc		= CCSC_MIXER0_LAYOUT,
-@@ -1144,6 +1188,10 @@ static const struct of_device_id sun8i_mixer_of_table[] = {
+@@ -1144,6 +1195,10 @@ static const struct of_device_id sun8i_mixer_of_table[] = {
  		.compatible = "allwinner,sun8i-h3-de2-mixer-0",
  		.data = &sun8i_h3_mixer0_cfg,
  	},
