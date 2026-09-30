@@ -1,8 +1,7 @@
-From 3df7b87da3fdca25626cbb1679530daf3556cf9d Mon Sep 17 00:00:00 2001
+From accc14b3f206fbb8530e5e295bb36f03bd8fa532 Mon Sep 17 00:00:00 2001
 From: Jernej Skrabec <jernej.skrabec@gmail.com>
 Date: Mon, 20 Jul 2026 08:59:07 +0200
-Subject: [PATCH 265/273] drm/sun4i: dw-hdmi: Enable YUV 4:2:0 output on H6 and
- H616
+Subject: [PATCH] drm/sun4i: dw-hdmi: Enable YUV 4:2:0 output on H6 and H616
 
 All pieces are now in place, so allow negotiating YUV 4:2:0 on SoCs
 with the formatter block. Add an engine callback for querying
@@ -28,7 +27,7 @@ Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
  4 files changed, 60 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-index 536aa9a20b74..a41cde6f9599 100644
+index b664db7d983c..b98e11f69d4f 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 @@ -23,6 +23,7 @@
@@ -39,7 +38,7 @@ index 536aa9a20b74..a41cde6f9599 100644
  
  #define bridge_to_sun8i_dw_hdmi(x) \
  	container_of(x, struct sun8i_dw_hdmi, bridge)
-@@ -127,11 +128,12 @@ sun8i_hdmi_enc_get_input_bus_fmts(struct drm_bridge *bridge,
+@@ -126,11 +127,12 @@ sun8i_hdmi_enc_get_input_bus_fmts(struct drm_bridge *bridge,
  				  u32 output_fmt,
  				  unsigned int *num_input_fmts)
  {
@@ -53,7 +52,7 @@ index 536aa9a20b74..a41cde6f9599 100644
  		return NULL;
  
  	input_fmt = kmalloc_obj(*input_fmt);
-@@ -155,13 +157,22 @@ static const struct drm_bridge_funcs sun8i_hdmi_enc_bridge_funcs = {
+@@ -154,13 +156,22 @@ static const struct drm_bridge_funcs sun8i_hdmi_enc_bridge_funcs = {
  	.atomic_create_state = drm_atomic_helper_bridge_create_state,
  };
  
@@ -80,7 +79,7 @@ index 536aa9a20b74..a41cde6f9599 100644
  }
  static const struct drm_encoder_funcs sun8i_dw_hdmi_encoder_funcs = {
  	.destroy = drm_encoder_cleanup,
-@@ -169,7 +180,7 @@ static const struct drm_encoder_funcs sun8i_dw_hdmi_encoder_funcs = {
+@@ -168,7 +179,7 @@ static const struct drm_encoder_funcs sun8i_dw_hdmi_encoder_funcs = {
  
  static const struct drm_encoder_helper_funcs
  sun8i_dw_hdmi_encoder_helper_funcs = {
@@ -89,7 +88,7 @@ index 536aa9a20b74..a41cde6f9599 100644
  };
  
  static enum drm_mode_status
-@@ -346,6 +357,7 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -345,6 +356,7 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
  
  	plat_data->mode_valid = hdmi->quirks->mode_valid;
  	plat_data->use_drm_infoframe = hdmi->quirks->use_drm_infoframe;
@@ -97,7 +96,7 @@ index 536aa9a20b74..a41cde6f9599 100644
  	plat_data->output_port = 1;
  	sun8i_hdmi_phy_set_ops(phy, plat_data);
  
-@@ -361,6 +373,7 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -360,6 +372,7 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
  
  	hdmi->bridge.type = DRM_MODE_CONNECTOR_HDMIA;
  	hdmi->bridge.interlace_allowed = true;
@@ -105,7 +104,7 @@ index 536aa9a20b74..a41cde6f9599 100644
  
  	drm_bridge_add(&hdmi->bridge);
  
-@@ -457,6 +470,7 @@ static const struct sun8i_dw_hdmi_quirks sun8i_a83t_quirks = {
+@@ -456,6 +469,7 @@ static const struct sun8i_dw_hdmi_quirks sun8i_a83t_quirks = {
  static const struct sun8i_dw_hdmi_quirks sun50i_h6_quirks = {
  	.mode_valid = sun8i_dw_hdmi_mode_valid_h6,
  	.use_drm_infoframe = true,
@@ -209,5 +208,3 @@ index c57899495e75..c4ca604f8adc 100644
 +	return format == MEDIA_BUS_FMT_RGB888_1X24;
 +}
  #endif /* _SUNXI_ENGINE_H_ */
--- 
-2.43.0

@@ -64,10 +64,10 @@ index 1a1d8b30b6ab..a63469fe8988 100644
  
  	cec_fill_conn_info_from_drm(&conn_info, connector);
 diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-index a0dc02ef9dc5..4172ea1c8a7e 100644
+index 437ef3d877bc..9158fc27080d 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-@@ -360,9 +360,13 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -359,9 +359,13 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
  	drm_atomic_helper_connector_reset(connector);
  	drm_connector_attach_max_bpc_property(connector, 8, 16);
  
@@ -82,7 +82,6 @@ index a0dc02ef9dc5..4172ea1c8a7e 100644
  	cec_fill_conn_info_from_drm(&conn_info, connector);
  
  	hdmi->cec_notifier = cec_notifier_conn_register(&pdev->dev, NULL,
--- 
 -- 
 2.43.0
 

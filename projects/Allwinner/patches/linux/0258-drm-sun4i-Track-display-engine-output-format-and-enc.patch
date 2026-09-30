@@ -155,7 +155,7 @@ index 561c133f3785..b9b27f06d6d9 100644
  				   struct sunxi_engine *engine,
  				   struct sun4i_tcon *tcon);
 diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-index c3f0b8200e6d..a0dc02ef9dc5 100644
+index ebee7c4a2eec..437ef3d877bc 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 @@ -20,6 +20,7 @@
@@ -166,7 +166,7 @@ index c3f0b8200e6d..a0dc02ef9dc5 100644
  #include "sun8i_dw_hdmi.h"
  #include "sun8i_tcon_top.h"
  
-@@ -76,6 +77,8 @@ static int sun8i_hdmi_enc_atomic_check(struct drm_bridge *bridge,
+@@ -75,6 +76,8 @@ static int sun8i_hdmi_enc_atomic_check(struct drm_bridge *bridge,
  				       struct drm_crtc_state *crtc_state,
  				       struct drm_connector_state *conn_state)
  {
@@ -175,7 +175,7 @@ index c3f0b8200e6d..a0dc02ef9dc5 100644
  	struct drm_connector_state *old_conn_state =
  		drm_atomic_get_old_connector_state(conn_state->state,
  						   conn_state->connector);
-@@ -83,6 +86,8 @@ static int sun8i_hdmi_enc_atomic_check(struct drm_bridge *bridge,
+@@ -82,6 +85,8 @@ static int sun8i_hdmi_enc_atomic_check(struct drm_bridge *bridge,
  	if (!drm_connector_atomic_hdr_metadata_equal(old_conn_state, conn_state))
  		crtc_state->mode_changed = true;
  

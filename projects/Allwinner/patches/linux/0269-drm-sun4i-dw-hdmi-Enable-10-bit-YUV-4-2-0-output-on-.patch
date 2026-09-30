@@ -1,8 +1,8 @@
-From 67ba7770240c6680e98a928bf8a410210207c721 Mon Sep 17 00:00:00 2001
+From 27091d42a42a55719c0fb0f78eeb6bb16ebe4a0e Mon Sep 17 00:00:00 2001
 From: Jernej Skrabec <jernej.skrabec@gmail.com>
 Date: Mon, 20 Jul 2026 12:45:51 +0200
-Subject: [PATCH 269/273] drm/sun4i: dw-hdmi: Enable 10-bit YUV 4:2:0 output on
- H6 and H616
+Subject: [PATCH] drm/sun4i: dw-hdmi: Enable 10-bit YUV 4:2:0 output on H6 and
+ H616
 
 The HDMI controller caps out at 594 MHz TMDS character rate, which
 covers 4K@60 RGB/4:4:4 only at 8-bit. 10-bit RGB/4:4:4 at 4K@60 would
@@ -33,7 +33,7 @@ Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
  3 files changed, 20 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/gpu/drm/sun4i/sun4i_tcon.c b/drivers/gpu/drm/sun4i/sun4i_tcon.c
-index bc7612435706..498f4316ca8e 100644
+index 5b75da6d2f15..e77105ba5be5 100644
 --- a/drivers/gpu/drm/sun4i/sun4i_tcon.c
 +++ b/drivers/gpu/drm/sun4i/sun4i_tcon.c
 @@ -611,6 +611,7 @@ static void sun4i_tcon1_mode_set(struct sun4i_tcon *tcon,
@@ -45,10 +45,10 @@ index bc7612435706..498f4316ca8e 100644
  		break;
  	default:
 diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-index 987d14cb1ae3..4a3c1c4206ba 100644
+index b98e11f69d4f..53c3c1a814fc 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-@@ -166,13 +166,25 @@ sun8i_dw_hdmi_encoder_atomic_mode_set(struct drm_encoder *encoder,
+@@ -165,13 +165,25 @@ sun8i_dw_hdmi_encoder_atomic_mode_set(struct drm_encoder *encoder,
  		drm_crtc_state_to_sun4i_crtc_state(crtc_state);
  	struct sun8i_dw_hdmi *hdmi = encoder_to_sun8i_dw_hdmi(encoder);
  	struct drm_display_mode *mode = &crtc_state->adjusted_mode;
@@ -77,8 +77,8 @@ index 987d14cb1ae3..4a3c1c4206ba 100644
 -	clk_set_rate(hdmi->clk_tmds, mode->crtc_clock * 1000 / div);
 +	clk_set_rate(hdmi->clk_tmds, rate);
  }
- 
- static const struct drm_encoder_helper_funcs
+ static const struct drm_encoder_funcs sun8i_dw_hdmi_encoder_funcs = {
+ 	.destroy = drm_encoder_cleanup,
 diff --git a/drivers/gpu/drm/sun4i/sun8i_mixer.c b/drivers/gpu/drm/sun4i/sun8i_mixer.c
 index 2861467320f7..5b5a34e63410 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_mixer.c
@@ -93,5 +93,3 @@ index 2861467320f7..5b5a34e63410 100644
  		return true;
  
  	return format == MEDIA_BUS_FMT_RGB888_1X24;
--- 
-2.43.0
