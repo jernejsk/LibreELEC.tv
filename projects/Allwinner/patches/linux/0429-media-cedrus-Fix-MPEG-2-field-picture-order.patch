@@ -1,0 +1,113 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Wed, 30 Sep 2026 21:59:18 +0200
+Subject: [PATCH] media: cedrus: Fix MPEG-2 field picture order
+
+The decoder needs the field order to tell the first and second field of
+a frame apart, e.g. when the second field is predicted from the first
+one. The driver takes it from top_field_first, but the standard requires
+that flag to be zero for field pictures, so every field coded stream
+was decoded as bottom field first. Streams coded as top field first
+field pairs show heavy corruption as a result.
+
+For field pictures, derive the order from the field sequence instead.
+Both fields of a frame are decoded into the same capture buffer, which
+carries the frame timestamp, so a field is the second one if it follows
+the opposite field with the same destination timestamp.
+
+Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+---
+ drivers/staging/media/sunxi/cedrus/cedrus.h   |  5 +++
+ .../staging/media/sunxi/cedrus/cedrus_mpeg2.c | 37 ++++++++++++++++++-
+ 2 files changed, 41 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus.h b/drivers/staging/media/sunxi/cedrus/cedrus.h
+index 9bd68e72cefd..3e33af3dde72 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus.h
++++ b/drivers/staging/media/sunxi/cedrus/cedrus.h
+@@ -195,6 +195,11 @@ struct cedrus_ctx {
+ 			u32		ic_icb0_reg68;
+ 			u32		ic_icf0_reg6c;
+ 		} vc1;
++		struct {
++			/* Last first field, to recognise the second one. */
++			u64		field_ts;
++			u8		field_structure;
++		} mpeg2;
+ 	} codec;
+ };
+ 
+diff --git a/drivers/staging/media/sunxi/cedrus/cedrus_mpeg2.c b/drivers/staging/media/sunxi/cedrus/cedrus_mpeg2.c
+index 10e98f08aafc..3ff184c0d29c 100644
+--- a/drivers/staging/media/sunxi/cedrus/cedrus_mpeg2.c
++++ b/drivers/staging/media/sunxi/cedrus/cedrus_mpeg2.c
+@@ -58,11 +58,38 @@ static int cedrus_mpeg2_setup(struct cedrus_ctx *ctx, struct cedrus_run *run)
+ 	struct vb2_queue *vq;
+ 	const u8 *matrix;
+ 	unsigned int i;
++	bool tff;
+ 	u32 reg;
+ 
+ 	seq = run->mpeg2.sequence;
+ 	pic = run->mpeg2.picture;
+ 
++	/*
++	 * The hardware needs to know the field order to tell the first and
++	 * the second field of a frame apart, e.g. to predict the second
++	 * field from the first one. Field pictures always have
++	 * top_field_first cleared, so derive the order from the field
++	 * sequence instead. Both fields of a frame are decoded into the same
++	 * capture buffer, which carries the frame timestamp.
++	 */
++	if (pic->picture_structure == V4L2_MPEG2_PIC_FRAME) {
++		tff = pic->flags & V4L2_MPEG2_PIC_FLAG_TOP_FIELD_FIRST;
++		ctx->codec.mpeg2.field_structure = 0;
++	} else {
++		u64 ts = run->dst->vb2_buf.timestamp;
++		bool second = ctx->codec.mpeg2.field_structure &&
++			      ctx->codec.mpeg2.field_structure != pic->picture_structure &&
++			      ctx->codec.mpeg2.field_ts == ts;
++
++		if (second)
++			tff = pic->picture_structure == V4L2_MPEG2_PIC_BOTTOM_FIELD;
++		else
++			tff = pic->picture_structure == V4L2_MPEG2_PIC_TOP_FIELD;
++
++		ctx->codec.mpeg2.field_structure = second ? 0 : pic->picture_structure;
++		ctx->codec.mpeg2.field_ts = ts;
++	}
++
+ 	quantisation = run->mpeg2.quantisation;
+ 
+ 	/* Activate MPEG engine. */
+@@ -95,7 +122,7 @@ static int cedrus_mpeg2_setup(struct cedrus_ctx *ctx, struct cedrus_run *run)
+ 	reg |= VE_DEC_MPEG_MP12HDR_F_CODE(1, 1, pic->f_code[1][1]);
+ 	reg |= VE_DEC_MPEG_MP12HDR_INTRA_DC_PRECISION(pic->intra_dc_precision);
+ 	reg |= VE_DEC_MPEG_MP12HDR_INTRA_PICTURE_STRUCTURE(pic->picture_structure);
+-	reg |= VE_DEC_MPEG_MP12HDR_TOP_FIELD_FIRST(pic->flags & V4L2_MPEG2_PIC_FLAG_TOP_FIELD_FIRST);
++	reg |= VE_DEC_MPEG_MP12HDR_TOP_FIELD_FIRST(tff);
+ 	reg |= VE_DEC_MPEG_MP12HDR_FRAME_PRED_FRAME_DCT(pic->flags & V4L2_MPEG2_PIC_FLAG_FRAME_PRED_DCT);
+ 	reg |= VE_DEC_MPEG_MP12HDR_CONCEALMENT_MOTION_VECTORS(pic->flags & V4L2_MPEG2_PIC_FLAG_CONCEALMENT_MV);
+ 	reg |= VE_DEC_MPEG_MP12HDR_Q_SCALE_TYPE(pic->flags & V4L2_MPEG2_PIC_FLAG_Q_SCALE_TYPE);
+@@ -189,10 +216,18 @@ static void cedrus_mpeg2_trigger(struct cedrus_ctx *ctx)
+ 	cedrus_write(dev, VE_DEC_MPEG_TRIGGER, reg);
+ }
+ 
++static int cedrus_mpeg2_start(struct cedrus_ctx *ctx)
++{
++	ctx->codec.mpeg2.field_structure = 0;
++
++	return 0;
++}
++
+ struct cedrus_dec_ops cedrus_dec_ops_mpeg2 = {
+ 	.irq_clear	= cedrus_mpeg2_irq_clear,
+ 	.irq_disable	= cedrus_mpeg2_irq_disable,
+ 	.irq_status	= cedrus_mpeg2_irq_status,
+ 	.setup		= cedrus_mpeg2_setup,
++	.start		= cedrus_mpeg2_start,
+ 	.trigger	= cedrus_mpeg2_trigger,
+ };
+-- 
+2.43.0
+
