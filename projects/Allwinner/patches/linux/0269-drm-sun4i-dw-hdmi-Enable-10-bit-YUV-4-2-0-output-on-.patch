@@ -45,10 +45,10 @@ index bc7612435706..498f4316ca8e 100644
  		break;
  	default:
 diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-index 987d14cb1ae3..4a3c1c4206ba 100644
+index 5e4f2ee5ddc8..fb3d499f0ea5 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-@@ -166,13 +166,25 @@ sun8i_dw_hdmi_encoder_atomic_mode_set(struct drm_encoder *encoder,
+@@ -165,13 +165,25 @@ sun8i_dw_hdmi_encoder_atomic_mode_set(struct drm_encoder *encoder,
  		drm_crtc_state_to_sun4i_crtc_state(crtc_state);
  	struct sun8i_dw_hdmi *hdmi = encoder_to_sun8i_dw_hdmi(encoder);
  	struct drm_display_mode *mode = &crtc_state->adjusted_mode;

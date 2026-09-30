@@ -63,10 +63,10 @@ index b16cf6efb8d4..6a6a6195da5e 100644
  #define HDMI_3D_TX_PHY_MSM_CTRL_CKO_SEL_CLK_REF_MPLL	(0 << 1)
  #define HDMI_3D_TX_PHY_MSM_CTRL_CKO_SEL_OFF		(1 << 1)
 diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-index bea668047822..0660ac4346a3 100644
+index bb17228c72e9..2fbd6cbd1023 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-@@ -374,6 +374,7 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -373,6 +373,7 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
  	 * output is never negotiated in practice.
  	 */
  	plat_data->ycbcr444_alt_vmap = true;

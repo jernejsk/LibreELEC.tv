@@ -28,7 +28,7 @@ Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
  4 files changed, 60 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-index dbba6714ba37..987d14cb1ae3 100644
+index 8d2b1abd10e6..5e4f2ee5ddc8 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 @@ -23,6 +23,7 @@
@@ -39,7 +39,7 @@ index dbba6714ba37..987d14cb1ae3 100644
  
  #define bridge_to_sun8i_dw_hdmi(x) \
  	container_of(x, struct sun8i_dw_hdmi, bridge)
-@@ -127,11 +128,12 @@ sun8i_hdmi_enc_get_input_bus_fmts(struct drm_bridge *bridge,
+@@ -126,11 +127,12 @@ sun8i_hdmi_enc_get_input_bus_fmts(struct drm_bridge *bridge,
  				  u32 output_fmt,
  				  unsigned int *num_input_fmts)
  {
@@ -53,7 +53,7 @@ index dbba6714ba37..987d14cb1ae3 100644
  		return NULL;
  
  	input_fmt = kmalloc_obj(*input_fmt);
-@@ -155,18 +157,27 @@ static const struct drm_bridge_funcs sun8i_hdmi_enc_bridge_funcs = {
+@@ -154,18 +156,27 @@ static const struct drm_bridge_funcs sun8i_hdmi_enc_bridge_funcs = {
  	.atomic_reset = drm_atomic_helper_bridge_reset,
  };
  
@@ -86,7 +86,7 @@ index dbba6714ba37..987d14cb1ae3 100644
  };
  
  static enum drm_mode_status
-@@ -343,6 +354,7 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -342,6 +353,7 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
  
  	plat_data->mode_valid = hdmi->quirks->mode_valid;
  	plat_data->use_drm_infoframe = hdmi->quirks->use_drm_infoframe;
@@ -94,7 +94,7 @@ index dbba6714ba37..987d14cb1ae3 100644
  	plat_data->output_port = 1;
  	sun8i_hdmi_phy_set_ops(phy, plat_data);
  
-@@ -358,6 +370,7 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -357,6 +369,7 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
  
  	hdmi->bridge.type = DRM_MODE_CONNECTOR_HDMIA;
  	hdmi->bridge.interlace_allowed = true;
@@ -102,7 +102,7 @@ index dbba6714ba37..987d14cb1ae3 100644
  
  	drm_bridge_add(&hdmi->bridge);
  
-@@ -453,6 +466,7 @@ static const struct sun8i_dw_hdmi_quirks sun8i_a83t_quirks = {
+@@ -452,6 +465,7 @@ static const struct sun8i_dw_hdmi_quirks sun8i_a83t_quirks = {
  static const struct sun8i_dw_hdmi_quirks sun50i_h6_quirks = {
  	.mode_valid = sun8i_dw_hdmi_mode_valid_h6,
  	.use_drm_infoframe = true,

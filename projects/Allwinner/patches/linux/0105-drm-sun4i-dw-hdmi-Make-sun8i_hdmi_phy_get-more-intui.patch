@@ -16,10 +16,10 @@ Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
  3 files changed, 8 insertions(+), 9 deletions(-)
 
 diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-index 87cd7749a4eb..88f08c625175 100644
+index d8f2ad93c330..847f9c4d207e 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-@@ -269,10 +269,11 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -268,10 +268,11 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
  		goto err_disable_clk_tmds;
  	}
  
@@ -80,7 +80,6 @@ index 489ea94693ff..581233d6eaf2 100644
  }
  
  static int sun8i_hdmi_phy_probe(struct platform_device *pdev)
--- 
 -- 
 2.52.0
 

@@ -74,10 +74,10 @@ index 7459c174d298..17c57998d459 100644
  		return;
  	}
 diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-index 4a3c1c4206ba..bea668047822 100644
+index fb3d499f0ea5..bb17228c72e9 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-@@ -368,6 +368,12 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -367,6 +367,12 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
  	plat_data->use_drm_infoframe = hdmi->quirks->use_drm_infoframe;
  	plat_data->ycbcr_420_allowed = hdmi->quirks->ycbcr_420_allowed;
  	plat_data->output_port = 1;
@@ -111,6 +111,5 @@ index 8500dd4f99d8..d029a32c03a5 100644
  	/*
  	 * Private data passed to all the .mode_valid() and .configure_phy()
  	 * callback functions.
--- 
 -- 
 2.43.0

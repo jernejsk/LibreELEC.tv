@@ -29,10 +29,10 @@ index e96c240f0933..588976c2afcd 100644
  	  Choose this option if you have an Allwinner SoC with the
  	  DesignWare HDMI controller. SoCs that support HDMI and
 diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-index 0660ac4346a3..9a959be51416 100644
+index 2fbd6cbd1023..abe942a760f2 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-@@ -304,6 +304,10 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -303,6 +303,10 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
  		return dev_err_probe(dev, PTR_ERR(phy),
  				     "Couldn't get the HDMI PHY\n");
  

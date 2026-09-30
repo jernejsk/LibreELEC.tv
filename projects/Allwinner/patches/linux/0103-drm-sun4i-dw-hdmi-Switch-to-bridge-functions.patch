@@ -14,9 +14,9 @@ Fixes: 920169041baa ("drm/sun4i: dw-hdmi: Fix ddc-en GPIO consumer conflict")
 Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
 ---
  drivers/gpu/drm/sun4i/Kconfig         |   1 +
- drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c | 170 +++++++++++++++++++++++---
+ drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c | 169 +++++++++++++++++++++++---
  drivers/gpu/drm/sun4i/sun8i_dw_hdmi.h |   5 +
- 3 files changed, 160 insertions(+), 16 deletions(-)
+ 3 files changed, 159 insertions(+), 16 deletions(-)
 
 diff --git a/drivers/gpu/drm/sun4i/Kconfig b/drivers/gpu/drm/sun4i/Kconfig
 index b56ba00aabca..e96c240f0933 100644
@@ -31,10 +31,10 @@ index b56ba00aabca..e96c240f0933 100644
  	select DRM_GEM_DMA_HELPER
  	select DRM_KMS_HELPER
 diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-index 18c250190433..87cd7749a4eb 100644
+index 18c250190433..d8f2ad93c330 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-@@ -8,13 +8,92 @@
+@@ -8,13 +8,91 @@
  #include <linux/of.h>
  #include <linux/platform_device.h>
  
@@ -78,25 +78,24 @@ index 18c250190433..87cd7749a4eb 100644
 +{
 +	struct sun8i_dw_hdmi *hdmi = bridge_to_sun8i_dw_hdmi(bridge);
 +
-+	if (!hdmi->cec_notifier)
++	const struct drm_edid *drm_edid;
++	const struct edid *edid;
++
++	/*
++	 * Many TVs drop HPD in standby. Keep the last physical address
++	 * then, so that CEC can still wake them up. It is replaced when a
++	 * sink is connected again.
++	 */
++	if (!hdmi->cec_notifier || status != connector_status_connected)
 +		return;
 +
-+	if (status == connector_status_connected) {
-+		const struct drm_edid *drm_edid;
-+		const struct edid *edid;
++	drm_edid = drm_bridge_edid_read(hdmi->next_bridge, hdmi->connector);
++	if (!drm_edid)
++		return;
 +
-+		drm_edid = drm_bridge_edid_read(hdmi->next_bridge,
-+						hdmi->connector);
-+		if (!drm_edid)
-+			return;
-+
-+		edid = drm_edid_raw(drm_edid);
-+		cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier,
-+						     edid);
-+		drm_edid_free(drm_edid);
-+	} else {
-+		cec_notifier_phys_addr_invalidate(hdmi->cec_notifier);
-+	}
++	edid = drm_edid_raw(drm_edid);
++	cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier, edid);
++	drm_edid_free(drm_edid);
 +}
 +
 +static int sun8i_hdmi_enc_atomic_check(struct drm_bridge *bridge,
@@ -127,7 +126,7 @@ index 18c250190433..87cd7749a4eb 100644
  static void sun8i_dw_hdmi_encoder_mode_set(struct drm_encoder *encoder,
  					   struct drm_display_mode *mode,
  					   struct drm_display_mode *adj_mode)
-@@ -100,8 +179,11 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -100,8 +178,11 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
  {
  	struct platform_device *pdev = to_platform_device(dev);
  	struct dw_hdmi_plat_data *plat_data;
@@ -140,7 +139,7 @@ index 18c250190433..87cd7749a4eb 100644
  	struct drm_encoder *encoder;
  	struct sun8i_dw_hdmi *hdmi;
  	int ret;
-@@ -109,9 +191,26 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -109,9 +190,26 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
  	if (!pdev->dev.of_node)
  		return -ENODEV;
  
@@ -170,7 +169,7 @@ index 18c250190433..87cd7749a4eb 100644
  
  	plat_data = &hdmi->plat_data;
  	hdmi->dev = &pdev->dev;
-@@ -181,30 +280,68 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
+@@ -181,30 +279,68 @@ static int sun8i_dw_hdmi_bind(struct device *dev, struct device *master,
  	if (ret)
  		goto err_disable_clk_tmds;
  
@@ -250,7 +249,7 @@ index 18c250190433..87cd7749a4eb 100644
  	sun8i_hdmi_phy_deinit(hdmi->phy);
  err_disable_clk_tmds:
  	clk_disable_unprepare(hdmi->clk_tmds);
-@@ -221,7 +358,8 @@ static void sun8i_dw_hdmi_unbind(struct device *dev, struct device *master,
+@@ -221,7 +357,8 @@ static void sun8i_dw_hdmi_unbind(struct device *dev, struct device *master,
  {
  	struct sun8i_dw_hdmi *hdmi = dev_get_drvdata(dev);
  
@@ -286,7 +285,6 @@ index ab80d52a70bb..14db4c679e91 100644
  	struct drm_encoder		encoder;
  	struct sun8i_hdmi_phy		*phy;
  	struct dw_hdmi_plat_data	plat_data;
--- 
 -- 
 2.52.0
 
