@@ -89,19 +89,19 @@ index b9d7a21e3705..f81e257f9c40 100644
  	sun8i_rdma_write(mixer->fmt_rdma, SUN50I_FMT_CTRL, yuv || is_10bit);
  }
 diff --git a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-index 8bebe7ec6739..d92c251e6b50 100644
+index 565beaf4ddd9..79753277d764 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c
-@@ -79,6 +79,8 @@ static int sun8i_hdmi_enc_atomic_check(struct drm_bridge *bridge,
- {
+@@ -80,6 +80,8 @@ static int sun8i_hdmi_enc_atomic_check(struct drm_bridge *bridge,
  	struct sun4i_crtc_state *scrtc_state =
  		drm_crtc_state_to_sun4i_crtc_state(crtc_state);
+ 	const struct sun4i_crtc_state *old_scrtc_state;
 +	struct sun8i_dw_hdmi *hdmi = bridge_to_sun8i_dw_hdmi(bridge);
 +	struct drm_bridge_state *hdmi_state;
  	struct drm_connector_state *old_conn_state =
  		drm_atomic_get_old_connector_state(conn_state->state,
  						   conn_state->connector);
-@@ -116,6 +118,18 @@ static int sun8i_hdmi_enc_atomic_check(struct drm_bridge *bridge,
+@@ -117,6 +119,18 @@ static int sun8i_hdmi_enc_atomic_check(struct drm_bridge *bridge,
  
  	scrtc_state->format = bridge_state->output_bus_cfg.format;
  
@@ -117,10 +117,10 @@ index 8bebe7ec6739..d92c251e6b50 100644
 +				   hdmi_state->output_bus_cfg.format :
 +				   scrtc_state->format;
 +
- 	return 0;
- }
- 
-@@ -166,14 +180,18 @@ sun8i_dw_hdmi_encoder_atomic_mode_set(struct drm_encoder *encoder,
+ 	/*
+ 	 * The channel CSC units depend on the output format and encoding, so
+ 	 * planes that are not part of this commit must be updated as well.
+@@ -178,14 +192,18 @@ sun8i_dw_hdmi_encoder_atomic_mode_set(struct drm_encoder *encoder,
  	struct sun8i_dw_hdmi *hdmi = encoder_to_sun8i_dw_hdmi(encoder);
  	struct drm_display_mode *mode = &crtc_state->adjusted_mode;
  	unsigned long rate = mode->crtc_clock * 1000UL;
