@@ -14,7 +14,6 @@ sets it.
 This fixes MR8_BT_B and MR9_BT_B of the H.264 conformance suite.
 
 Fixes: 6eb9b758e307 ("media: cedrus: Add H264 decoding support")
-Assisted-by: LLM
 Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
 ---
  drivers/staging/media/sunxi/cedrus/cedrus_h264.c | 12 +++++++++++-

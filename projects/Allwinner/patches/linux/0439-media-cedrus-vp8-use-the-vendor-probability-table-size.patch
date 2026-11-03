@@ -15,7 +15,6 @@ causes IOMMU page faults.
 Allocate the table with 0x5400 bytes, like the vendor libraries do.
 
 Fixes: 3c39a16d30d8 ("media: cedrus: Add support for VP8 decoding")
-Assisted-by: LLM
 Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
 ---
  drivers/staging/media/sunxi/cedrus/cedrus_vp8.c | 2 +-

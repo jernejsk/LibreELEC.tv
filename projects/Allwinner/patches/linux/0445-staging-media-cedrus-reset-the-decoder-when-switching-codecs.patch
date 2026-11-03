@@ -16,7 +16,6 @@ engine to finish its memory accesses. Do the same whenever a job uses a
 different codec than the previous one, and after a timeout.
 
 Fixes: 3c39a16d30d8 ("media: cedrus: Add support for VP8 decoding")
-Assisted-by: LLM
 Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
 ---
  drivers/staging/media/sunxi/cedrus/cedrus.h   |  3 +++

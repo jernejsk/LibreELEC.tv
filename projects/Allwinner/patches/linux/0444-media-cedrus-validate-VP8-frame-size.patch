@@ -10,7 +10,6 @@ buffers, which shows up as IOMMU page faults and decode timeouts.
 Check the frame size in try_ctrl, like for the H.264 and HEVC SPS.
 
 Fixes: 3c39a16d30d8 ("media: cedrus: Add support for VP8 decoding")
-Assisted-by: LLM
 Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
 ---
  drivers/staging/media/sunxi/cedrus/cedrus.c | 6 ++++++

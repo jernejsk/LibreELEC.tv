@@ -17,7 +17,6 @@ same helper.
 
 Fixes: fec94f8c9954 ("media: cedrus: h264: Optimize mv col buffer allocation")
 Fixes: 0ee952c2f484 ("media: cedrus: h265: Associate mv col buffers with buffer")
-Assisted-by: LLM
 Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
 ---
  drivers/staging/media/sunxi/cedrus/cedrus.h   |  1 +

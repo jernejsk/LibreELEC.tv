@@ -15,7 +15,6 @@ cedrus_video.h for that.
 
 Fixes: 6eb9b758e307 ("media: cedrus: Add H264 decoding support")
 Fixes: 86caab29da78 ("media: cedrus: Add HEVC/H.265 decoding support")
-Assisted-by: LLM
 Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
 ---
  drivers/staging/media/sunxi/cedrus/cedrus.c | 41 ++++++++++++++++++++-

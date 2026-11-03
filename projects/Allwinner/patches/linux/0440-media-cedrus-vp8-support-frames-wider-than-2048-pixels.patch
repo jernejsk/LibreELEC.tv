@@ -11,7 +11,6 @@ The vendor library sizes the deblocking buffer as 24 bytes per column.
 Tested on H616 with 2560x1440 and 3840x2160 libvpx streams, which are
 bit-exact with the FFmpeg software decoder.
 
-Assisted-by: LLM
 Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
 ---
  drivers/staging/media/sunxi/cedrus/cedrus.h   |  7 ++
