@@ -1,0 +1,39 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Tue, 3 Nov 2026 21:48:02 +0100
+Subject: [PATCH] drm/bridge: dw-hdmi: Respect the HDMI 1.4 TMDS limit for deep
+ color
+
+Deep color output was only checked against the maximum TMDS clock of
+the HDMI Forum data block when the sink has one. A 2560x1440 mode at
+241.5 MHz then went out as 10-bit RGB at 301.875 MHz to a sink which
+declares 300 MHz in its HDMI vendor specific data block, which left the
+screen black.
+
+Also check unscrambled rates against the HDMI 1.4 limit.
+
+Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+---
+ drivers/gpu/drm/bridge/synopsys/dw-hdmi.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index c23c30974a08..840abeb16e57 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -2738,6 +2738,15 @@ static bool dw_hdmi_deep_color_fits(struct dw_hdmi *hdmi,
+ 	else
+ 		max = min(max, 165000U);
+ 
++	/*
++	 * The HDMI Forum data block only covers rates above 340 MHz, where
++	 * scrambling is used. Below that, the limit of the HDMI vendor
++	 * specific data block still applies, which some sinks set lower.
++	 */
++	if (tmds <= 340000 && info->hdmi.max_tmds_clock_14 &&
++	    tmds > info->hdmi.max_tmds_clock_14)
++		return false;
++
+ 	return tmds <= max;
+ }
+ 
