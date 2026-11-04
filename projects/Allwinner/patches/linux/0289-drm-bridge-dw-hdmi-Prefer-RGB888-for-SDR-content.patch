@@ -1,0 +1,69 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jernej Skrabec <jernej.skrabec@gmail.com>
+Date: Wed, 4 Nov 2026 17:30:00 +0100
+Subject: [PATCH] drm/bridge: dw-hdmi: Prefer RGB888 for SDR content
+
+YUV 4:2:2 is currently preferred over RGB888 whenever deep color RGB
+doesn't fit, and YUV 4:2:0 is preferred over RGB888 on HDMI 2.0 sinks
+for modes which support it. Both trade half of the chroma resolution
+for more bits per component or a lower TMDS rate, which only pays off
+for HDR content. Users see SDR desktop and video output in YUV 4:2:2
+or YUV 4:2:0 for no reason, e.g. on 1440p monitors where 10-bit RGB
+doesn't fit the TMDS limit.
+
+Only prefer YUV 4:2:2 when HDR metadata is set. Without it, put RGB888
+first if it fits the TMDS limits, also on modes which could use YUV
+4:2:0. Changing HDR metadata already triggers a modeset, so the output
+format follows the content.
+
+Signed-off-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+---
+diff --git a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+index 5063f426885d..30820a87c4c6 100644
+--- a/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
++++ b/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
+@@ -2771,6 +2771,7 @@ static u32 *dw_hdmi_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
+ 	bool is_hdmi2_sink = info->hdmi.scdc.supported ||
+ 			     (info->color_formats & BIT(DRM_OUTPUT_COLOR_FORMAT_YCBCR420));
+ 	bool rgb12_first = false, rgb10_first = false, yuv422_first = false;
++	bool rgb888_first = false;
+ 	u32 *output_fmts;
+ 	unsigned int i = 0;
+ 
+@@ -2795,7 +2796,10 @@ static u32 *dw_hdmi_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
+ 	 * it, so that e.g. HDR content isn't quantized to 8 bits: RGB at
+ 	 * the highest depth the TMDS rate allows, and otherwise YUV 4:2:2,
+ 	 * which carries up to 12 bits at the pixel rate and keeps twice the
+-	 * chroma resolution of YUV 4:2:0.
++	 * chroma resolution of YUV 4:2:0. Only fall back to YUV 4:2:2 for
++	 * HDR content. Without HDR metadata, the extra bits don't justify
++	 * halving the chroma resolution, so stick to RGB888 if it fits,
++	 * also on modes which could use YUV 4:2:0.
+ 	 */
+ 	if (hdmi->plat_data->deep_color_max_tmds_clock &&
+ 	    !(conn->ycbcr_420_allowed && drm_mode_is_420_only(info, mode))) {
+@@ -2803,10 +2807,13 @@ static u32 *dw_hdmi_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
+ 			      dw_hdmi_deep_color_fits(hdmi, info, mode, 12);
+ 		rgb10_first = max_bpc >= 10 && info->bpc >= 10 &&
+ 			      dw_hdmi_deep_color_fits(hdmi, info, mode, 10);
+-		yuv422_first = max_bpc >= 10 && info->bpc >= 10 &&
++		yuv422_first = conn_state->hdr_output_metadata &&
++			       max_bpc >= 10 && info->bpc >= 10 &&
+ 			       (info->color_formats &
+ 				BIT(DRM_OUTPUT_COLOR_FORMAT_YCBCR422)) &&
+ 			       dw_hdmi_deep_color_fits(hdmi, info, mode, 8);
++		rgb888_first = !conn_state->hdr_output_metadata &&
++			       dw_hdmi_deep_color_fits(hdmi, info, mode, 8);
+ 	}
+ 
+ 	if (rgb12_first)
+@@ -2824,7 +2831,8 @@ static u32 *dw_hdmi_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
+ 	 */
+ 	if (conn->ycbcr_420_allowed &&
+ 	    (drm_mode_is_420_only(info, mode) ||
+-	     (is_hdmi2_sink && drm_mode_is_420_also(info, mode)))) {
++	     (is_hdmi2_sink && drm_mode_is_420_also(info, mode) &&
++	      !rgb888_first))) {
+ 
+ 		/* Order bus formats from 16bit to 8bit if supported */
+ 		if (max_bpc >= 16 && info->bpc == 16 &&
